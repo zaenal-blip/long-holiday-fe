@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router";
-import { Users, Cog, Package, BookOpen, Leaf, ArrowLeft, Check, Plus, Factory, Activity, Layers, ShieldCheck } from "lucide-react";
+import { Users, Cog, Package, BookOpen, Leaf, ArrowLeft, Check, Plus, Factory, Activity, Layers, ShieldCheck, CalendarDays } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,14 @@ interface CheckRow { no: number; itemId: string; item: string; judgment: "OK" | 
 const catIcons: Record<string, any> = {
     Man: Users, Machine: Cog, Material: Package, Method: BookOpen, Environment: Leaf
 };
+
+const dayTypes = [
+    { id: "DAY_16", label: "Day 16" },
+    { id: "DAY_17", label: "Day 17" },
+    { id: "DAY_18", label: "Day 18" },
+    { id: "BEFORE_PRODUCTION", label: "Before Production" },
+    { id: "FIRST_DAY_PRODUCTION", label: "First Day Production" },
+];
 
 // Define some line metadata for styling if it matches
 const lineMetadata: Record<string, { icon: any; desc: string }> = {
@@ -37,9 +45,10 @@ export default function Input5M() {
     const navigate = useNavigate();
     const deptName = searchParams.get("dept");
 
-    // Steps: 1 = Line, 2 = Category, 3 = Table
+    // Steps: 1 = Line, 2 = Day Type, 3 = Category, 4 = Table
     const [step, setStep] = useState(1);
     const [selectedLine, setSelectedLine] = useState<Line | null>(null);
+    const [selectedDayType, setSelectedDayType] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<CategoryItem | null>(null);
 
     const [lines, setLines] = useState<Line[]>([]);
@@ -74,7 +83,7 @@ export default function Input5M() {
                     // Auto-skip line selection for non-production departments (they have exactly 1 virtual line)
                     if (currentDept.name !== "Production" && linesData.length > 0) {
                         setSelectedLine(linesData[0]);
-                        setStep(2);
+                        setStep(2); // Go to Day Type selection
                     }
                 }
             } catch (error) {
@@ -92,6 +101,11 @@ export default function Input5M() {
         setStep(2);
     };
 
+    const handleDayTypeSelect = (dayType: string) => {
+        setSelectedDayType(dayType);
+        setStep(3);
+    };
+
     const handleCategorySelect = async (catName: string) => {
         const cat = dbCategories.find(c => c.name === catName);
         if (!cat) {
@@ -100,7 +114,7 @@ export default function Input5M() {
         }
         setSelectedCategory(cat);
         await loadCheckItems(selectedLine!.id, cat.id);
-        setStep(3);
+        setStep(4);
     };
 
     const loadCheckItems = async (lineId: string, categoryId: string) => {
@@ -139,6 +153,7 @@ export default function Input5M() {
             setIsSubmitting(true);
             const payload = {
                 lineId: selectedLine!.id,
+                dayType: selectedDayType,
                 checkDate: new Date().toISOString().split("T")[0],
                 results: rows.map(r => ({
                     checkItemId: r.itemId,
@@ -154,15 +169,17 @@ export default function Input5M() {
 
             toast.success("Checksheet submitted successfully");
 
-            // For non-production we go straight to step 2, for production we go to step 1
+            // Go back to Step 2 (Day Type) or Step 1 (Line)
+            setSelectedCategory(null);
+            setSelectedDayType(null);
+            setRows([]);
+
             if (deptName !== "Production") {
                 setStep(2);
             } else {
                 setStep(1);
                 setSelectedLine(null);
             }
-            setSelectedCategory(null);
-            setRows([]);
         } catch (error) {
             toast.error("Failed to submit checksheet.");
         } finally {
@@ -231,15 +248,57 @@ export default function Input5M() {
         );
     }
 
-    // Step 2: Select Category
+    // Step 2: Select Day Type
     if (step === 2) {
         return (
+            <div className="p-6 max-w-5xl mx-auto space-y-8">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" onClick={() => {
+                        if (deptName !== "Production") navigate("/"); // non-prod skipped step 1
+                        else setStep(1);
+                    }} className="rounded-full hover:bg-primary/10 text-muted-foreground">
+                        <ArrowLeft className="w-5 h-5" />
+                    </Button>
+                    <div>
+                        <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Select Inspection Day Type</h2>
+                        <nav className="flex items-center gap-2 mt-1 text-sm font-medium text-muted-foreground/70">
+                            <span className="text-primary/80 font-semibold">{deptName}</span>
+                            {deptName === "Production" && selectedLine && (
+                                <>
+                                    <span className="text-muted-foreground/40 font-light">/</span>
+                                    <span className="text-primary/80 font-semibold">{selectedLine.name}</span>
+                                </>
+                            )}
+                        </nav>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 transition-all duration-500">
+                    {dayTypes.map((dt) => (
+                        <Card
+                            key={dt.id}
+                            className={`relative group cursor-pointer border-border/50 bg-card hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 overflow-hidden ${selectedDayType === dt.id ? "ring-2 ring-primary border-primary" : ""
+                                }`}
+                            onClick={() => handleDayTypeSelect(dt.id)}
+                        >
+                            <CardContent className="p-6 flex items-center gap-5">
+                                <div className={`w-12 h-12 shrink-0 rounded-xl flex items-center justify-center transition-all duration-300 ${selectedDayType === dt.id ? "bg-primary text-primary-foreground" : "bg-primary/5 text-primary"}`}>
+                                    <CalendarDays className="w-6 h-6" />
+                                </div>
+                                <h4 className="font-bold text-lg text-foreground">{dt.label}</h4>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // Step 3: Select Category
+    if (step === 3) {
+        return (
             <div className="p-6 max-w-5xl mx-auto">
-                <Button variant="ghost" className="mb-4 text-muted-foreground" onClick={() => {
-                    // For non-production, 1 skip back to main menu since line step was skipped
-                    if (deptName !== "Production") navigate("/");
-                    else setStep(1);
-                }}>
+                <Button variant="ghost" className="mb-4 text-muted-foreground" onClick={() => setStep(2)}>
                     <ArrowLeft className="w-4 h-4 mr-2" /> Back
                 </Button>
                 <div className="mb-6">
@@ -248,6 +307,9 @@ export default function Input5M() {
                         Department: {deptName}
                         {deptName === "Production" && selectedLine && (
                             <> → Line: <span className="text-primary">{selectedLine.name}</span></>
+                        )}
+                        {selectedDayType && (
+                            <> → Day Type: <span className="text-primary">{dayTypes.find(d => d.id === selectedDayType)?.label}</span></>
                         )}
                     </p>
                 </div>
@@ -271,10 +333,10 @@ export default function Input5M() {
         );
     }
 
-    // Step 3: Checksheet Table
+    // Step 4: Checksheet Table
     return (
         <div className="p-6 max-w-5xl mx-auto overflow-hidden">
-            <Button variant="ghost" className="mb-4 text-muted-foreground" onClick={() => setStep(2)}>
+            <Button variant="ghost" className="mb-4 text-muted-foreground" onClick={() => setStep(3)}>
                 <ArrowLeft className="w-4 h-4 mr-2" /> Back
             </Button>
             <Card className="border-border/50 shadow-sm">
@@ -283,6 +345,7 @@ export default function Input5M() {
                     <p className="text-sm font-medium text-muted-foreground/80 mt-1">
                         {deptName}
                         {deptName === "Production" && selectedLine && ` → ${selectedLine.name}`}
+                        {' '}→ <span className="text-primary">{dayTypes.find(d => d.id === selectedDayType)?.label}</span>
                         {' '}→ <span className="text-primary">{selectedCategory?.name}</span>
                     </p>
                 </CardHeader>

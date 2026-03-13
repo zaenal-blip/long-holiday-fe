@@ -204,7 +204,7 @@ const Welcome = () => {
                     </div>
 
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4 tracking-tight">
-                        EPKD 5M Checking System
+                        Plant 3 Long Holiday Checking System
                     </h1>
                     <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light">
                         Digital checksheet for pre and post long holiday preparation
