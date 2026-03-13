@@ -11,6 +11,14 @@ type CategoryProgress = { id: string; name: string; total: number; ok: number; n
 type LineProgress = { id: string; name: string; department: string; total: number; ok: number; ng: number };
 type Summary = { okCount: number; ngCount: number };
 
+const dayTypes = [
+    { id: "DAY_16", label: "Day 16" },
+    { id: "DAY_17", label: "Day 17" },
+    { id: "DAY_18", label: "Day 18" },
+    { id: "BEFORE_PRODUCTION", label: "Before Production" },
+    { id: "FIRST_DAY_PRODUCTION", label: "First Day Production" },
+];
+
 const Dashboard = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -19,6 +27,7 @@ const Dashboard = () => {
     const [filterDepartment, setFilterDepartment] = useState("all");
     const [filterLine, setFilterLine] = useState("all");
     const [filterCategory, setFilterCategory] = useState("all");
+    const [filterDayType, setFilterDayType] = useState("all");
 
     // Master Data
     const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
@@ -53,6 +62,7 @@ const Dashboard = () => {
             if (filterDepartment !== "all") params.set("departmentId", filterDepartment);
             if (filterLine !== "all") params.set("lineId", filterLine);
             if (filterCategory !== "all") params.set("categoryId", filterCategory);
+            if (filterDayType !== "all") params.set("dayType", filterDayType);
 
             const [summaryData, catData, lineData] = await Promise.all([
                 apiFetch<Summary>(`/checking/summary?${params.toString()}`),
@@ -74,7 +84,7 @@ const Dashboard = () => {
         if (departments.length > 0) {
             fetchDashboard();
         }
-    }, [filterDepartment, filterLine, filterCategory, departments]);
+    }, [filterDepartment, filterLine, filterCategory, filterDayType, departments]);
 
     const ngByCategory = useMemo(() => {
         return progressCategory.map((cat) => ({
@@ -99,7 +109,7 @@ const Dashboard = () => {
                             setFilterDepartment(val);
                             setFilterLine("all"); // Reset line when dept changes
                         }}>
-                            <SelectTrigger className="w-48 bg-white border-[#E5E7EB] shadow-sm"><SelectValue placeholder="All Departments" /></SelectTrigger>
+                            <SelectTrigger className="w-44 bg-white border-[#E5E7EB] shadow-sm"><SelectValue placeholder="All Departments" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Departments</SelectItem>
                                 {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
@@ -108,7 +118,7 @@ const Dashboard = () => {
 
                         {isProductionSelected && (
                             <Select value={filterLine} onValueChange={setFilterLine}>
-                                <SelectTrigger className="w-48 bg-white border-[#E5E7EB] shadow-sm"><SelectValue placeholder="All Lines" /></SelectTrigger>
+                                <SelectTrigger className="w-44 bg-white border-[#E5E7EB] shadow-sm"><SelectValue placeholder="All Lines" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Lines</SelectItem>
                                     {lines.filter(l => filterDepartment === "all" || l.departmentId === filterDepartment).map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
@@ -116,8 +126,16 @@ const Dashboard = () => {
                             </Select>
                         )}
 
+                        <Select value={filterDayType} onValueChange={setFilterDayType}>
+                            <SelectTrigger className="w-44 bg-white border-[#E5E7EB] shadow-sm"><SelectValue placeholder="All Day Types" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Day Types</SelectItem>
+                                {dayTypes.map((dt) => <SelectItem key={dt.id} value={dt.id}>{dt.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+
                         <Select value={filterCategory} onValueChange={setFilterCategory}>
-                            <SelectTrigger className="w-48 bg-white border-[#E5E7EB] shadow-sm"><SelectValue placeholder="All Categories" /></SelectTrigger>
+                            <SelectTrigger className="w-44 bg-white border-[#E5E7EB] shadow-sm"><SelectValue placeholder="All Categories" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Categories</SelectItem>
                                 {progressCategory.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -150,6 +168,7 @@ const Dashboard = () => {
                             params.set("status", "NG");
                             if (filterDepartment !== "all") params.set("departmentId", filterDepartment);
                             if (filterLine !== "all") params.set("lineId", filterLine);
+                            if (filterDayType !== "all") params.set("dayType", filterDayType);
                             navigate(`/review?${params.toString()}`);
                         }}
                     >
@@ -240,6 +259,7 @@ const Dashboard = () => {
                                 const reviewParams = new URLSearchParams();
                                 reviewParams.set("lineId", line.id);
                                 if (filterCategory !== "all") reviewParams.set("categoryId", filterCategory);
+                                if (filterDayType !== "all") reviewParams.set("dayType", filterDayType);
 
                                 // Show either Line Name (for Production) or Department Name (for others)
                                 const displayName = line.department === "Production" ? line.name : line.department;
@@ -279,7 +299,7 @@ const Dashboard = () => {
                                 <CardTitle className="text-lg font-bold text-[#1E3A5F]">NG Monitoring by Category</CardTitle>
                                 <p className="text-xs text-slate-400 mt-0.5 font-medium italic">Identification of recurring problems per 5M category</p>
                             </div>
-                            {(filterDepartment !== "all" || filterLine !== "all") && <Badge className="bg-[#1E3A5F] text-white">Filtered</Badge>}
+                            {(filterDepartment !== "all" || filterLine !== "all" || filterDayType !== "all") && <Badge className="bg-[#1E3A5F] text-white">Filtered</Badge>}
                         </div>
                     </CardHeader>
                     <CardContent className="p-8">
