@@ -1,19 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router";
-import { Users, Cog, Package, BookOpen, Leaf, ArrowLeft, Check, Plus, Factory, Activity, Layers, ShieldCheck, CalendarDays, PlusCircle, Save } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
-import { format, startOfToday } from "date-fns";
-import { cn } from "@/lib/utils";
-import { categories, categoryDescriptions } from "@/lib/mock-data";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Card, CardContent } from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
@@ -23,7 +10,19 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { apiFetch } from "@/lib/api";
+import { categories, categoryDescriptions } from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
+import { format, startOfToday } from "date-fns";
+import { Activity, ArrowLeft, BookOpen, CalendarDays, Check, Cog, Factory, Layers, Leaf, Package, PlusCircle, Save, ShieldCheck, Users } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
+import { toast } from "sonner";
 
 interface CategoryItem { id: string; name: string }
 interface Line { id: string; name: string; departmentId: string }
@@ -509,26 +508,26 @@ export default function Input5M() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-muted/30">
-                                    <TableRow className="border-border/50 hover:bg-transparent">
-                                        <TableHead className="w-16 font-semibold">No</TableHead>
-                                        <TableHead className="w-1/4 font-semibold">Check Item</TableHead>
-                                        <TableHead className="w-1/4 font-semibold">What To Check</TableHead>
+                            <Table containerClassName="max-h-[600px] overflow-y-auto">
+                                <TableHeader>
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className="w-16 h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap text-center">No</TableHead>
+                                        <TableHead className="h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Check Item</TableHead>
+                                        <TableHead className="h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">What To Check</TableHead>
                                         {selectedCategory?.name === "Man" && (
-                                            <TableHead className="w-24 font-semibold text-center">Total</TableHead>
+                                            <TableHead className="w-24 h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap text-center">Total MP</TableHead>
                                         )}
-                                        <TableHead className="w-32 font-semibold text-center">Judgment</TableHead>
-                                        <TableHead className="font-semibold">NG Details</TableHead>
+                                        <TableHead className="w-32 h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap text-center">Judgment</TableHead>
+                                        <TableHead className="h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">NG Details</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {rows.map((row, idx) => (
                                         <React.Fragment key={idx}>
-                                            <TableRow className={`transition-colors ${row.judgment === 'NG' ? 'bg-destructive/5 border-b-0' : 'border-border/50 hover:bg-muted/10'}`}>
-                                                <TableCell className="font-medium text-muted-foreground">{row.no}</TableCell>
-                                                <TableCell className="font-medium text-foreground">{row.item}</TableCell>
-                                                <TableCell className="text-sm text-muted-foreground">{row.checkDescription}</TableCell>
+                                            <TableRow className={`h-14 transition-colors ${row.judgment === 'NG' ? 'bg-destructive/[0.03] border-b-0' : 'border-border/50 hover:bg-muted/5'}`}>
+                                                <TableCell className="text-center font-medium text-muted-foreground">{row.no}</TableCell>
+                                                <TableCell className="font-medium text-foreground min-w-[150px]">{row.item}</TableCell>
+                                                <TableCell className="text-sm text-muted-foreground min-w-[200px]">{row.checkDescription}</TableCell>
                                                 {selectedCategory?.name === "Man" && (
                                                     <TableCell className="text-center">
                                                         <Input

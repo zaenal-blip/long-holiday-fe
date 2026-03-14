@@ -9,5 +9,6 @@ export interface ChecksheetEntry {
   judgment: "OK" | "NG" | "";
   reason: string;
   date: string;
+  planCountermeasureDate?: string;
   status: "draft" | "submitted" | "OK" | "NG";
 }

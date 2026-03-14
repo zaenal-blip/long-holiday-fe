@@ -18,6 +18,7 @@ const Review = () => {
     const [filterLine, setFilterLine] = useState(searchParams.get("lineId") || "all");
     const [filterCat, setFilterCat] = useState(searchParams.get("categoryId") || "all");
     const [filterJudgment, setFilterJudgment] = useState(searchParams.get("status") || "all");
+    const [filterDayType, setFilterDayType] = useState(searchParams.get("dayType") || "all");
 
     const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
     const [lines, setLines] = useState<{ id: string; name: string; departmentId: string }[]>([]);
@@ -54,6 +55,7 @@ const Review = () => {
                 if (filterDepartment !== "all") params.set("departmentId", filterDepartment);
                 if (filterLine !== "all") params.set("lineId", filterLine);
                 if (filterJudgment !== "all") params.set("status", filterJudgment);
+                if (filterDayType !== "all") params.set("dayType", filterDayType);
 
                 // The backend API for getAllResults expects the category name, not ID.
                 const catObj = categories.find(c => c.id === filterCat);
@@ -76,6 +78,7 @@ const Review = () => {
                     item: item.item,
                     judgment: item.status as "OK" | "NG",
                     reason: item.note || "",
+                    planCountermeasureDate: item.planCountermeasureDate,
                     date: item.checkDate ? new Date(item.checkDate).toISOString().split("T")[0] : "",
                 })) as ChecksheetEntry[];
 
@@ -92,7 +95,7 @@ const Review = () => {
         if (categories.length > 0 || filterCat === "all") {
             load();
         }
-    }, [filterDepartment, filterLine, filterCat, filterJudgment, categories]);
+    }, [filterDepartment, filterLine, filterCat, filterJudgment, filterDayType, categories]);
 
     // Data for the Bar Chart
     const ngChartData = useMemo(() => {
@@ -177,11 +180,24 @@ const Review = () => {
                     </SelectContent>
                 </Select>
 
+                <Select value={filterDayType} onValueChange={setFilterDayType}>
+                    <SelectTrigger className="w-48"><SelectValue placeholder="All Day Types" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Day Types</SelectItem>
+                        <SelectItem value="DAY_16">Day 16</SelectItem>
+                        <SelectItem value="DAY_17">Day 17</SelectItem>
+                        <SelectItem value="DAY_18">Day 18</SelectItem>
+                        <SelectItem value="BEFORE_PRODUCTION">Before Production</SelectItem>
+                        <SelectItem value="FIRST_DAY_PRODUCTION">First Day Production</SelectItem>
+                    </SelectContent>
+                </Select>
+
                 <Button variant="outline" onClick={() => {
                     setFilterDepartment("all");
                     setFilterLine("all");
                     setFilterCat("all");
                     setFilterJudgment("all");
+                    setFilterDayType("all");
                 }} className="ml-auto text-muted-foreground hover:text-foreground">
                     Reset Filters
                 </Button>
@@ -241,66 +257,72 @@ const Review = () => {
 
             <Card className="shadow-sm border-border/50">
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-muted/30">
+                    <Table containerClassName="max-h-[600px] overflow-y-auto">
+                        <TableHeader className="shadow-sm border-b">
+                            <TableRow className="hover:bg-transparent border-0">
+                                <TableHead className="w-[180px] text-xs font-semibold uppercase tracking-wide text-muted-foreground py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Department / Line</TableHead>
+                                <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Category</TableHead>
+                                <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Check Item Name</TableHead>
+                                <TableHead className="w-[90px] text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Judgment</TableHead>
+                                <TableHead className="w-[220px] text-xs font-semibold uppercase tracking-wide text-muted-foreground py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Reason</TableHead>
+                                <TableHead className="w-[160px] text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Plan Countermeasure</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
                                 <TableRow>
-                                    <TableHead className="font-semibold">Department / Line</TableHead>
-                                    <TableHead className="font-semibold">Category</TableHead>
-                                    <TableHead className="font-semibold">Check Item Name</TableHead>
-                                    <TableHead className="font-semibold">Judgment</TableHead>
-                                    <TableHead className="font-semibold">Reason</TableHead>
-                                    <TableHead className="font-semibold">Check Date</TableHead>
+                                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                                            <span className="text-sm font-medium animate-pulse">Loading results...</span>
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {isLoading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                                                <span className="text-sm font-medium animate-pulse">Loading results...</span>
+                            ) : entries.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground font-medium">
+                                        No assessment results found for the current filters.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                entries.map((row) => (
+                                    <TableRow key={row.id} className="h-12 hover:bg-muted/5 transition-colors border-border/40">
+                                        <TableCell className="w-[180px] py-0">
+                                            <div className="flex flex-col max-w-[170px]">
+                                                <span className="text-sm font-medium truncate">{row.department === "Production" ? row.line : row.department}</span>
+                                                <span className="text-[10px] text-muted-foreground truncate">{row.department === "Production" ? "Production" : "Dept Level"}</span>
                                             </div>
                                         </TableCell>
-                                    </TableRow>
-                                ) : entries.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="h-32 text-center text-muted-foreground font-medium">
-                                            No assessment results found for the current filters.
+                                        <TableCell className="w-[120px] text-center py-0">
+                                            <Badge variant="outline" className="text-[10px] bg-background px-2 py-0 h-5">
+                                                {row.category}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="py-0">
+                                            <div className="text-sm text-foreground truncate max-w-[400px]" title={row.item}>
+                                                {row.item}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="w-[90px] text-center py-0">
+                                            <Badge className={`text-[10px] px-2 py-0 h-5 border-0 ${row.judgment === "OK" ? "bg-success hover:bg-success/90 text-success-foreground" : "bg-destructive hover:bg-destructive/90 text-destructive-foreground"}`}>
+                                                {row.judgment}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="w-[220px] py-2 align-top">
+                                            <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words" title={row.reason}>
+                                                {row.reason || "—"}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="w-[160px] text-center py-0">
+                                            <span className="text-sm text-muted-foreground">
+                                                {row.planCountermeasureDate ? new Date(row.planCountermeasureDate).toISOString().split("T")[0] : "—"}
+                                            </span>
                                         </TableCell>
                                     </TableRow>
-                                ) : (
-                                    entries.map((row) => (
-                                        <TableRow key={row.id} className="hover:bg-muted/10 transition-colors">
-                                            <TableCell className="font-medium">
-                                                <div className="flex flex-col">
-                                                    <span>{row.department === "Production" ? row.line : row.department}</span>
-                                                    <span className="text-[10px] text-muted-foreground">{row.department === "Production" ? "Production" : "Department Level"}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="text-xs bg-background">
-                                                    {row.category}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="max-w-[300px] truncate" title={row.item}>{row.item}</TableCell>
-                                            <TableCell>
-                                                <Badge className={row.judgment === "OK" ? "bg-success hover:bg-success/90 text-success-foreground border-0" : "bg-destructive hover:bg-destructive/90 text-destructive-foreground border-0"}>
-                                                    {row.judgment}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate" title={row.reason}>
-                                                {row.reason || "—"}
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">
-                                                {row.date}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
                 </CardContent>
             </Card>
         </div>
