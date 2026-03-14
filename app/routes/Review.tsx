@@ -184,11 +184,11 @@ const Review = () => {
                     <SelectTrigger className="w-48"><SelectValue placeholder="All Day Types" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Day Types</SelectItem>
-                        <SelectItem value="DAY_16">Tanggal 16</SelectItem>
-                        <SelectItem value="DAY_17">Tanggal 17</SelectItem>
-                        <SelectItem value="DAY_18">Tanggal 18</SelectItem>
-                        <SelectItem value="BEFORE_PRODUCTION">Before Production (29 Mar)</SelectItem>
-                        <SelectItem value="FIRST_DAY_PRODUCTION">First Day Production (30 Mar)</SelectItem>
+                        <SelectItem value="DAY_16">D-3 (16 Maret)</SelectItem>
+                        <SelectItem value="DAY_17">D-2 (17 Maret)</SelectItem>
+                        <SelectItem value="DAY_18">D-1 (18 Maret)</SelectItem>
+                        <SelectItem value="BEFORE_PRODUCTION">Before Production (29 Maret)</SelectItem>
+                        <SelectItem value="FIRST_DAY_PRODUCTION">First Day Production (30 Maret)</SelectItem>
                     </SelectContent>
                 </Select>
 

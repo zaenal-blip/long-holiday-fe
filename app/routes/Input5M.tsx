@@ -42,11 +42,11 @@ const catIcons: Record<string, any> = {
 };
 
 const dayTypes = [
-    { id: "DAY_16", label: "Tanggal 16" },
-    { id: "DAY_17", label: "Tanggal 17" },
-    { id: "DAY_18", label: "Tanggal 18" },
-    { id: "BEFORE_PRODUCTION", label: "Before Production (29 Mar)" },
-    { id: "FIRST_DAY_PRODUCTION", label: "First Day Production (30 Mar)" },
+    { id: "DAY_16", label: "D-3 (16 Maret)" },
+    { id: "DAY_17", label: "D-2 (17 Maret)" },
+    { id: "DAY_18", label: "D-1 (18 Maret)" },
+    { id: "BEFORE_PRODUCTION", label: "Before Production (29 Maret)" },
+    { id: "FIRST_DAY_PRODUCTION", label: "First Day Production (30 Maret)" },
 ];
 
 // Define some line metadata for styling if it matches
