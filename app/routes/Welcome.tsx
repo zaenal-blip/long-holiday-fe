@@ -143,12 +143,6 @@ const Welcome = () => {
                             <div className="w-2 h-2 rounded-full bg-[#3B82F6] shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
                             <div className="w-8 h-[2px] bg-gradient-to-l from-transparent to-[#3B82F6]" />
                         </div>
-                        <h2 className="text-2xl font-bold tracking-widest text-[#F4F6F8] drop-shadow-md">
-                            Fabric & Manufactur Automotive
-                        </h2>
-                        <h2 className="text-2xl font-bold tracking-widest text-[#F4F6F8] drop-shadow-md">
-                            Digital System
-                        </h2>
                     </div>
                 </div>
             </div>
