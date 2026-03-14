@@ -95,7 +95,7 @@ const Refleksi = () => {
                 {pdfPath ? (
                     <Card className="overflow-hidden shadow-md border-border/60">
                         <iframe
-                            src={`${API_BASE}${pdfPath}`}
+                            src={pdfPath.startsWith("http") ? pdfPath : `${API_BASE}${pdfPath}`}
                             title="Refleksi PDF"
                             className="w-full border-0"
                             style={{ height: "calc(100vh - 180px)" }}
