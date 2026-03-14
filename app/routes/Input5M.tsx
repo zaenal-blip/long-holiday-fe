@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router";
-import { Users, Cog, Package, BookOpen, Leaf, ArrowLeft, Check, Plus, Factory, Activity, Layers, ShieldCheck, CalendarDays } from "lucide-react";
+import { Users, Cog, Package, BookOpen, Leaf, ArrowLeft, Check, Plus, Factory, Activity, Layers, ShieldCheck, CalendarDays, PlusCircle, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+import { format, startOfToday } from "date-fns";
+import { cn } from "@/lib/utils";
 import { categories, categoryDescriptions } from "@/lib/mock-data";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CategoryItem { id: string; name: string }
 interface Line { id: string; name: string; departmentId: string }
-interface CheckRow { no: number; itemId: string; item: string; judgment: "OK" | "NG" | ""; reason: string }
+interface CheckRow {
+    no: number;
+    itemId: string;
+    item: string;
+    checkDescription: string;
+    judgment: "OK" | "NG";
+    ngReason: string;
+    countermeasurePlanDate: string;
+}
 
 const catIcons: Record<string, any> = {
     Man: Users, Machine: Cog, Material: Package, Method: BookOpen, Environment: Leaf
@@ -57,6 +79,12 @@ export default function Input5M() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Modal state for adding new check item
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [newItemName, setNewItemName] = useState("");
+    const [newItemDescription, setNewItemDescription] = useState("");
+    const [isAddingItem, setIsAddingItem] = useState(false);
+
     useEffect(() => {
         if (!deptName) {
             navigate("/"); // No department selected, go back to home
@@ -81,7 +109,7 @@ export default function Input5M() {
                     setDbCategories(catsData);
 
                     // Auto-skip line selection for non-production departments (they have exactly 1 virtual line)
-                    if (currentDept.name !== "Production" && linesData.length > 0) {
+                    if (!["Production", "Office", "PAD"].includes(currentDept.name) && linesData.length > 0) {
                         setSelectedLine(linesData[0]);
                         setStep(2); // Go to Day Type selection
                     }
@@ -125,8 +153,10 @@ export default function Input5M() {
                 no: i + 1,
                 itemId: item.id,
                 item: item.itemName,
+                checkDescription: item.checkDescription || "-",
                 judgment: "OK", // Default to OK per requirements
-                reason: "",
+                ngReason: "",
+                countermeasurePlanDate: "",
             })));
         } catch (error) {
             toast.error("Failed to load check items");
@@ -135,8 +165,59 @@ export default function Input5M() {
         }
     };
 
-    const updateRow = (index: number, field: "judgment" | "reason", value: string) => {
-        setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+    const updateRow = (index: number, field: keyof CheckRow, value: any) => {
+        setRows((prev) => prev.map((r, i) => {
+            if (i !== index) return r;
+            const updated = { ...r, [field]: value };
+
+            // If switching to NG and date is empty, set default to today
+            if (field === "judgment" && value === "NG" && !updated.countermeasurePlanDate) {
+                updated.countermeasurePlanDate = format(new Date(), "yyyy-MM-dd");
+            }
+            return updated;
+        }));
+    };
+
+    const handleAddItem = async () => {
+        if (!newItemName.trim()) {
+            toast.error("Item Name cannot be empty.");
+            return;
+        }
+
+        if (!selectedLine || !selectedCategory) return;
+
+        setIsAddingItem(true);
+        try {
+            const newItem = await apiFetch<any>("/master-data/check-items", {
+                method: "POST",
+                body: JSON.stringify({
+                    lineId: selectedLine.id,
+                    categoryId: selectedCategory.id,
+                    itemName: newItemName,
+                    checkDescription: newItemDescription
+                })
+            });
+
+            const newRow: CheckRow = {
+                no: rows.length + 1,
+                itemId: newItem.id,
+                item: newItem.itemName,
+                checkDescription: newItem.checkDescription || "-",
+                judgment: "OK",
+                ngReason: "",
+                countermeasurePlanDate: "",
+            };
+
+            setRows(prev => [...prev, newRow]);
+            toast.success("New check item added successfully.");
+            setIsAddModalOpen(false);
+            setNewItemName("");
+            setNewItemDescription("");
+        } catch (error) {
+            toast.error("Failed to add new check item.");
+        } finally {
+            setIsAddingItem(false);
+        }
     };
 
     const handleSubmit = async (isDraft: boolean) => {
@@ -146,8 +227,10 @@ export default function Input5M() {
         }
 
         if (rows.length === 0) { toast.error("No items to submit"); return; }
-        if (rows.some((r) => r.judgment === "NG" && !r.reason.trim())) { toast.error("Please fill in reason for all NG items"); return; }
-        if (rows.some((r) => !r.judgment)) { toast.error("Please complete all judgments"); return; }
+        if (rows.some((r) => r.judgment === "NG" && (!r.ngReason.trim() || !r.countermeasurePlanDate))) {
+            toast.error("Please fill in NG Reason and Countermeasure Plan Date for all NG items");
+            return;
+        }
 
         try {
             setIsSubmitting(true);
@@ -158,7 +241,8 @@ export default function Input5M() {
                 results: rows.map(r => ({
                     checkItemId: r.itemId,
                     status: r.judgment,
-                    note: r.reason || undefined
+                    ngReason: r.judgment === "NG" ? r.ngReason : undefined,
+                    countermeasurePlanDate: r.judgment === "NG" ? r.countermeasurePlanDate : undefined,
                 }))
             };
 
@@ -174,7 +258,7 @@ export default function Input5M() {
             setSelectedDayType(null);
             setRows([]);
 
-            if (deptName !== "Production") {
+            if (!["Production", "Office", "PAD"].includes(deptName!)) {
                 setStep(2);
             } else {
                 setStep(1);
@@ -254,7 +338,7 @@ export default function Input5M() {
             <div className="p-6 max-w-5xl mx-auto space-y-8">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" onClick={() => {
-                        if (deptName !== "Production") navigate("/"); // non-prod skipped step 1
+                        if (!["Production", "Office", "PAD"].includes(deptName!)) navigate("/"); // non-prod skipped step 1
                         else setStep(1);
                     }} className="rounded-full hover:bg-primary/10 text-muted-foreground">
                         <ArrowLeft className="w-5 h-5" />
@@ -263,7 +347,7 @@ export default function Input5M() {
                         <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Select Inspection Day Type</h2>
                         <nav className="flex items-center gap-2 mt-1 text-sm font-medium text-muted-foreground/70">
                             <span className="text-primary/80 font-semibold">{deptName}</span>
-                            {deptName === "Production" && selectedLine && (
+                            {["Production", "Office", "PAD"].includes(deptName!) && selectedLine && (
                                 <>
                                     <span className="text-muted-foreground/40 font-light">/</span>
                                     <span className="text-primary/80 font-semibold">{selectedLine.name}</span>
@@ -305,7 +389,7 @@ export default function Input5M() {
                     <h2 className="text-2xl font-bold text-foreground mb-1">Select 5M Category</h2>
                     <p className="text-muted-foreground text-sm font-medium">
                         Department: {deptName}
-                        {deptName === "Production" && selectedLine && (
+                        {["Production", "Office", "PAD"].includes(deptName!) && selectedLine && (
                             <> → Line: <span className="text-primary">{selectedLine.name}</span></>
                         )}
                         {selectedDayType && (
@@ -339,16 +423,70 @@ export default function Input5M() {
             <Button variant="ghost" className="mb-4 text-muted-foreground" onClick={() => setStep(3)}>
                 <ArrowLeft className="w-4 h-4 mr-2" /> Back
             </Button>
-            <Card className="border-border/50 shadow-sm">
-                <CardHeader className="bg-card border-b border-border/50">
-                    <CardTitle className="text-xl text-foreground">Checksheet — {selectedCategory?.name}</CardTitle>
+
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold text-foreground">Checksheet — {selectedCategory?.name}</h2>
                     <p className="text-sm font-medium text-muted-foreground/80 mt-1">
                         {deptName}
-                        {deptName === "Production" && selectedLine && ` → ${selectedLine.name}`}
+                        {["Production", "Office", "PAD"].includes(deptName!) && selectedLine && ` → ${selectedLine.name}`}
                         {' '}→ <span className="text-primary">{dayTypes.find(d => d.id === selectedDayType)?.label}</span>
                         {' '}→ <span className="text-primary">{selectedCategory?.name}</span>
                     </p>
-                </CardHeader>
+                </div>
+
+                <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
+                            <PlusCircle className="w-4 h-4 mr-2" />
+                            Add Check Item
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Add New Check Item</DialogTitle>
+                            <DialogDescription>
+                                Create a new checklist item for {selectedLine?.name} / {selectedCategory?.name}.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <label htmlFor="name" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    Item Name
+                                </label>
+                                <Input
+                                    id="name"
+                                    placeholder="Enter item name..."
+                                    value={newItemName}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewItemName(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label htmlFor="desc" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    What To Check
+                                </label>
+                                <Textarea
+                                    id="desc"
+                                    placeholder="Describe what needs to be checked..."
+                                    value={newItemDescription}
+                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewItemDescription(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
+                            <Button onClick={handleAddItem} disabled={isAddingItem || !newItemName.trim()}>
+                                {isAddingItem && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />}
+                                <Save className="w-4 h-4 mr-2" />
+                                Save Item
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
+            <Card className="border-border/50 shadow-sm">
                 <CardContent className="p-0">
                     {isLoading ? (
                         <div className="flex justify-center items-center py-16">
@@ -357,7 +495,7 @@ export default function Input5M() {
                     ) : rows.length === 0 ? (
                         <div className="text-center py-16 text-muted-foreground bg-muted/10">
                             No check items configured for this selection. <br />
-                            <span className="text-sm">Please configure items in Master Data.</span>
+                            <span className="text-sm">Click "+ Add Check Item" to create one.</span>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -365,37 +503,91 @@ export default function Input5M() {
                                 <TableHeader className="bg-muted/30">
                                     <TableRow className="border-border/50 hover:bg-transparent">
                                         <TableHead className="w-16 font-semibold">No</TableHead>
-                                        <TableHead className="font-semibold">Check Item Name</TableHead>
-                                        <TableHead className="w-40 font-semibold text-center">Judgment</TableHead>
-                                        <TableHead className="font-semibold">Reason (If NG)</TableHead>
+                                        <TableHead className="w-1/4 font-semibold">Check Item</TableHead>
+                                        <TableHead className="w-1/4 font-semibold">What To Check</TableHead>
+                                        <TableHead className="w-32 font-semibold text-center">Judgment</TableHead>
+                                        <TableHead className="font-semibold">NG Details</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {rows.map((row, idx) => (
-                                        <TableRow key={idx} className="border-border/50 hover:bg-muted/10 transition-colors">
-                                            <TableCell className="font-medium text-muted-foreground">{row.no}</TableCell>
-                                            <TableCell className="font-medium text-foreground">{row.item}</TableCell>
-                                            <TableCell className="text-center">
-                                                <Select value={row.judgment} onValueChange={(v) => updateRow(idx, "judgment", v as "OK" | "NG" | "")}>
-                                                    <SelectTrigger className={`w-full ${row.judgment === 'OK' ? 'border-success text-success bg-success/5' : row.judgment === 'NG' ? 'border-destructive text-destructive bg-destructive/5' : ''}`}>
-                                                        <SelectValue placeholder="Select" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="OK" className="font-semibold text-success focus:text-success">OK</SelectItem>
-                                                        <SelectItem value="NG" className="font-semibold text-destructive focus:text-destructive">NG</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    placeholder={row.judgment === "NG" ? "Required — enter reason" : "Optional note"}
-                                                    value={row.reason}
-                                                    onChange={(e) => updateRow(idx, "reason", e.target.value)}
-                                                    className={`bg-background ${row.judgment === "NG" && !row.reason.trim() ? "border-destructive ring-1 ring-destructive/30" : ""}`}
-                                                    disabled={row.judgment === "OK"}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
+                                        <React.Fragment key={idx}>
+                                            <TableRow className={`transition-colors ${row.judgment === 'NG' ? 'bg-destructive/5 border-b-0' : 'border-border/50 hover:bg-muted/10'}`}>
+                                                <TableCell className="font-medium text-muted-foreground">{row.no}</TableCell>
+                                                <TableCell className="font-medium text-foreground">{row.item}</TableCell>
+                                                <TableCell className="text-sm text-muted-foreground">{row.checkDescription}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <Select value={row.judgment} onValueChange={(v) => updateRow(idx, "judgment", v as "OK" | "NG")}>
+                                                        <SelectTrigger className={`w-full ${row.judgment === 'OK' ? 'border-success text-success bg-success/5' : 'border-destructive text-destructive bg-destructive/5'}`}>
+                                                            <SelectValue placeholder="Select" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="OK" className="font-semibold text-success focus:text-success">OK</SelectItem>
+                                                            <SelectItem value="NG" className="font-semibold text-destructive focus:text-destructive">NG</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {row.judgment === "NG" ? (
+                                                        <span className="text-xs font-semibold text-destructive animate-pulse">Documentation Required ↓</span>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground/50">-</span>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                            {row.judgment === "NG" && (
+                                                <TableRow className="border-border/50 bg-destructive/5 shadow-inner">
+                                                    <TableCell colSpan={5} className="p-0 pb-6 border-0">
+                                                        <div className="ml-[4.5rem] mr-6 p-5 bg-background border border-destructive/20 rounded-lg shadow-sm relative overflow-hidden animate-in slide-in-from-top-2 fade-in duration-300">
+                                                            <div className="absolute top-0 left-0 w-1.5 h-full bg-destructive/60" />
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-2">
+                                                                <div className="space-y-2">
+                                                                    <label className="text-[11px] font-bold uppercase tracking-wider text-destructive/80 flex items-center gap-2">
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-destructive/60"></span>
+                                                                        NG Reason
+                                                                    </label>
+                                                                    <textarea
+                                                                        placeholder="Describe the issue in detail..."
+                                                                        value={row.ngReason}
+                                                                        onChange={(e) => updateRow(idx, "ngReason", e.target.value)}
+                                                                        className="flex min-h-[100px] w-full rounded-md border border-destructive/30 bg-background/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <label className="text-[11px] font-bold uppercase tracking-wider text-destructive/80 flex items-center gap-2">
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-destructive/60"></span>
+                                                                        Countermeasure Plan Date
+                                                                    </label>
+                                                                    <Popover>
+                                                                        <PopoverTrigger asChild>
+                                                                            <Button
+                                                                                variant={"outline"}
+                                                                                className={cn(
+                                                                                    "w-full justify-start text-left font-normal bg-background/50 border-destructive/30 focus:ring-destructive/40 h-10",
+                                                                                    !row.countermeasurePlanDate && "text-muted-foreground"
+                                                                                )}
+                                                                            >
+                                                                                <CalendarDays className="mr-2 h-4 w-4" />
+                                                                                {row.countermeasurePlanDate ? format(new Date(row.countermeasurePlanDate), "yyyy-MM-dd") : <span>Pick a date</span>}
+                                                                            </Button>
+                                                                        </PopoverTrigger>
+                                                                        <PopoverContent className="w-auto p-0" align="start">
+                                                                            <Calendar
+                                                                                mode="single"
+                                                                                selected={row.countermeasurePlanDate ? new Date(row.countermeasurePlanDate) : undefined}
+                                                                                onSelect={(date) => updateRow(idx, "countermeasurePlanDate", date ? format(date, "yyyy-MM-dd") : "")}
+                                                                                disabled={(date) => date < startOfToday()}
+                                                                                initialFocus
+                                                                            />
+                                                                        </PopoverContent>
+                                                                    </Popover>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </React.Fragment>
                                     ))}
                                 </TableBody>
                             </Table>
