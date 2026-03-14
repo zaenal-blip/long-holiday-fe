@@ -210,78 +210,78 @@ export default function MasterData() {
     };
 
     return (
-        <div className="container mx-auto p-6 space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="container mx-auto p-6 space-y-8">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-6">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white">Master Data</h1>
-                    <p className="text-neutral-400">Manage Departments, Lines, and filtered Check Items.</p>
+                    <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Master Data</h1>
+                    <p className="text-sm text-gray-500 mt-1">Manage departments, lines, and inspection check items.</p>
                 </div>
             </div>
 
             <Tabs defaultValue="departments" className="w-full" onValueChange={setActiveTab}>
-                <TabsList className="bg-black/40 border border-white/10 p-1 rounded-xl h-auto flex flex-wrap gap-2">
-                    <TabsTrigger value="departments" className="px-6 py-2.5 rounded-lg data-[state=active]:bg-[#4F8CFF] data-[state=active]:text-white transition-all gap-2">
+                <TabsList className="flex gap-2 p-1 bg-gray-100 rounded-lg h-auto w-fit">
+                    <TabsTrigger value="departments" className="px-6 py-2 rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 transition-all gap-2 text-gray-600 h-9">
                         <Building2 className="w-4 h-4" /> Departments
                     </TabsTrigger>
-                    <TabsTrigger value="lines" className="px-6 py-2.5 rounded-lg data-[state=active]:bg-[#4F8CFF] data-[state=active]:text-white transition-all gap-2">
+                    <TabsTrigger value="lines" className="px-6 py-2 rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 transition-all gap-2 text-gray-600 h-9">
                         <LayoutGrid className="w-4 h-4" /> Lines
                     </TabsTrigger>
-                    <TabsTrigger value="check-items" className="px-6 py-2.5 rounded-lg data-[state=active]:bg-[#4F8CFF] data-[state=active]:text-white transition-all gap-2">
+                    <TabsTrigger value="check-items" className="px-6 py-2 rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 transition-all gap-2 text-gray-600 h-9">
                         <ClipboardList className="w-4 h-4" /> Check Items
                     </TabsTrigger>
                 </TabsList>
 
                 {/* DEPARTMENTS TAB */}
-                <TabsContent value="departments" className="mt-6">
-                    <Card className="bg-black/40 border-white/10 backdrop-blur-md">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <TabsContent value="departments" className="mt-6 focus-visible:outline-none">
+                    <Card className="bg-white rounded-xl shadow-sm border p-6">
+                        <div className="flex items-center justify-between mb-6">
                             <div>
-                                <CardTitle className="text-xl text-white">Departments</CardTitle>
-                                <CardDescription className="text-neutral-400">Manage master departments</CardDescription>
+                                <h3 className="text-lg font-medium text-gray-900">Departments</h3>
+                                <p className="text-sm text-gray-500">Manage master departments</p>
                             </div>
                             {!isAdding && (
-                                <Button onClick={() => setIsAdding(true)} className="bg-[#4F8CFF] hover:bg-[#3b6dcc] text-white gap-2">
+                                <Button onClick={() => setIsAdding(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
                                     <Plus className="w-4 h-4" /> Add Department
                                 </Button>
                             )}
-                        </CardHeader>
-                        <CardContent>
+                        </div>
+                        <div className="border rounded-lg overflow-hidden">
                             <Table>
-                                <TableHeader>
-                                    <TableRow className="border-white/10 hover:bg-transparent">
-                                        <TableHead className="text-neutral-400">Name</TableHead>
-                                        <TableHead className="text-right text-neutral-400">Actions</TableHead>
+                                <TableHeader className="bg-gray-50/50">
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className="font-semibold text-gray-900">Name</TableHead>
+                                        <TableHead className="text-right font-semibold text-gray-900">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {isAdding && (
-                                        <TableRow className="border-white/10 bg-white/5">
+                                        <TableRow className="bg-blue-50/30">
                                             <TableCell>
-                                                <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Department name" className="bg-black/60 border-white/20 text-white" autoFocus />
+                                                <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Department name" className="bg-white border-gray-200 text-gray-900" autoFocus />
                                             </TableCell>
                                             <TableCell className="text-right space-x-2">
-                                                <Button variant="ghost" size="icon" onClick={handleCreateDept} className="text-[#4F8CFF]"><Check className="w-4 h-4" /></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => setIsAdding(false)} className="text-red-400"><X className="w-4 h-4" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={handleCreateDept} className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Check className="w-4 h-4" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={() => setIsAdding(false)} className="h-8 w-8 text-red-500 hover:bg-red-50"><X className="w-4 h-4" /></Button>
                                             </TableCell>
                                         </TableRow>
                                     )}
                                     {departments.map((dept) => (
-                                        <TableRow key={dept.id} className="border-white/10 hover:bg-white/5">
-                                            <TableCell className="text-white">
+                                        <TableRow key={dept.id} className="hover:bg-gray-50 transition-colors">
+                                            <TableCell className="text-gray-900 font-medium py-3">
                                                 {editingId === dept.id ? (
-                                                    <Input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="bg-black/60 border-white/20 text-white" autoFocus />
+                                                    <Input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="bg-white border-gray-200 text-gray-900" autoFocus />
                                                 ) : dept.name}
                                             </TableCell>
-                                            <TableCell className="text-right space-x-2">
+                                            <TableCell className="text-right space-x-1 py-3">
                                                 {editingId === dept.id ? (
                                                     <>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleUpdateDept(dept.id)} className="text-[#4F8CFF]"><Check className="w-4 h-4" /></Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => setEditingId(null)} className="text-red-400"><X className="w-4 h-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleUpdateDept(dept.id)} className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Check className="w-4 h-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => setEditingId(null)} className="h-8 w-8 text-red-500 hover:bg-red-50"><X className="w-4 h-4" /></Button>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Button variant="ghost" size="icon" onClick={() => { setEditingId(dept.id); setEditingName(dept.name); }} className="text-neutral-400 hover:text-white"><Edit2 className="w-4 h-4" /></Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteDept(dept.id)} className="text-red-400"><Trash2 className="w-4 h-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => { setEditingId(dept.id); setEditingName(dept.name); }} className="h-8 w-8 p-0 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"><Edit2 className="w-4 h-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteDept(dept.id)} className="h-8 w-8 p-0 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></Button>
                                                     </>
                                                 )}
                                             </TableCell>
@@ -289,42 +289,42 @@ export default function MasterData() {
                                     ))}
                                 </TableBody>
                             </Table>
-                        </CardContent>
+                        </div>
                     </Card>
                 </TabsContent>
 
                 {/* LINES TAB */}
-                <TabsContent value="lines" className="mt-6">
-                    <Card className="bg-black/40 border-white/10 backdrop-blur-md">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <TabsContent value="lines" className="mt-6 focus-visible:outline-none">
+                    <Card className="bg-white rounded-xl shadow-sm border p-6">
+                        <div className="flex items-center justify-between mb-6">
                             <div>
-                                <CardTitle className="text-xl text-white">Lines</CardTitle>
-                                <CardDescription className="text-neutral-400">Manage production lines per department</CardDescription>
+                                <h3 className="text-lg font-medium text-gray-900">Lines</h3>
+                                <p className="text-sm text-gray-500">Manage production lines per department</p>
                             </div>
                             {!isAdding && (
-                                <Button onClick={() => setIsAdding(true)} className="bg-[#4F8CFF] hover:bg-[#3b6dcc] text-white gap-2">
+                                <Button onClick={() => setIsAdding(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
                                     <Plus className="w-4 h-4" /> Add Line
                                 </Button>
                             )}
-                        </CardHeader>
-                        <CardContent>
+                        </div>
+                        <div className="border rounded-lg overflow-hidden">
                             <Table>
-                                <TableHeader>
-                                    <TableRow className="border-white/10 hover:bg-transparent">
-                                        <TableHead className="text-neutral-400">Line Name</TableHead>
-                                        <TableHead className="text-neutral-400">Department</TableHead>
-                                        <TableHead className="text-right text-neutral-400">Actions</TableHead>
+                                <TableHeader className="bg-gray-50/50">
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className="font-semibold text-gray-900">Line Name</TableHead>
+                                        <TableHead className="font-semibold text-gray-900">Department</TableHead>
+                                        <TableHead className="text-right font-semibold text-gray-900">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {isAdding && (
-                                        <TableRow className="border-white/10 bg-white/5">
+                                        <TableRow className="bg-blue-50/30">
                                             <TableCell>
-                                                <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Line name" className="bg-black/60 border-white/20 text-white" autoFocus />
+                                                <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Line name" className="bg-white border-gray-200 text-gray-900" autoFocus />
                                             </TableCell>
                                             <TableCell>
                                                 <Select value={newDepartmentId} onValueChange={setNewDepartmentId}>
-                                                    <SelectTrigger className="bg-black/60 border-white/20 text-white">
+                                                    <SelectTrigger className="bg-white border-gray-200 text-gray-900">
                                                         <SelectValue placeholder="Select Department" />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -333,31 +333,31 @@ export default function MasterData() {
                                                 </Select>
                                             </TableCell>
                                             <TableCell className="text-right space-x-2">
-                                                <Button variant="ghost" size="icon" onClick={handleCreateLine} className="text-[#4F8CFF]"><Check className="w-4 h-4" /></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => setIsAdding(false)} className="text-red-400"><X className="w-4 h-4" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={handleCreateLine} className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Check className="w-4 h-4" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={() => setIsAdding(false)} className="h-8 w-8 text-red-500 hover:bg-red-50"><X className="w-4 h-4" /></Button>
                                             </TableCell>
                                         </TableRow>
                                     )}
                                     {lines.map((line) => (
-                                        <TableRow key={line.id} className="border-white/10 hover:bg-white/5">
-                                            <TableCell className="text-white">
+                                        <TableRow key={line.id} className="hover:bg-gray-50 transition-colors">
+                                            <TableCell className="text-gray-900 font-medium py-3">
                                                 {editingId === line.id ? (
-                                                    <Input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="bg-black/60 border-white/20 text-white" autoFocus />
+                                                    <Input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="bg-white border-gray-200 text-gray-900" autoFocus />
                                                 ) : line.name}
                                             </TableCell>
-                                            <TableCell className="text-neutral-300">
+                                            <TableCell className="text-gray-600 py-3">
                                                 {line.department?.name || "Unknown"}
                                             </TableCell>
-                                            <TableCell className="text-right space-x-2">
+                                            <TableCell className="text-right space-x-1 py-3">
                                                 {editingId === line.id ? (
                                                     <>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleUpdateLine(line.id)} className="text-[#4F8CFF]"><Check className="w-4 h-4" /></Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => setEditingId(null)} className="text-red-400"><X className="w-4 h-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleUpdateLine(line.id)} className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Check className="w-4 h-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => setEditingId(null)} className="h-8 w-8 text-red-500 hover:bg-red-50"><X className="w-4 h-4" /></Button>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Button variant="ghost" size="icon" onClick={() => { setEditingId(line.id); setEditingName(line.name); }} className="text-neutral-400 hover:text-white"><Edit2 className="w-4 h-4" /></Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteLine(line.id)} className="text-red-400"><Trash2 className="w-4 h-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => { setEditingId(line.id); setEditingName(line.name); }} className="h-8 w-8 p-0 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"><Edit2 className="w-4 h-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteLine(line.id)} className="h-8 w-8 p-0 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></Button>
                                                     </>
                                                 )}
                                             </TableCell>
@@ -365,21 +365,21 @@ export default function MasterData() {
                                     ))}
                                 </TableBody>
                             </Table>
-                        </CardContent>
+                        </div>
                     </Card>
                 </TabsContent>
 
                 {/* CHECK ITEMS TAB */}
-                <TabsContent value="check-items" className="mt-6">
-                    <Card className="bg-black/40 border-white/10 backdrop-blur-md">
-                        <CardHeader className="flex flex-col space-y-4">
+                <TabsContent value="check-items" className="mt-6 focus-visible:outline-none">
+                    <Card className="bg-white rounded-xl shadow-sm border p-6">
+                        <div className="flex flex-col space-y-6">
                             <div>
-                                <CardTitle className="text-xl text-white">Check Items</CardTitle>
-                                <CardDescription className="text-neutral-400">Manage check items for a specific line and category</CardDescription>
+                                <h3 className="text-lg font-medium text-gray-900">Check Items</h3>
+                                <p className="text-sm text-gray-500">Manage check items for a specific line and category</p>
                             </div>
-                            <div className="flex flex-col sm:flex-row gap-4 items-center bg-black/50 p-4 rounded-lg border border-white/10">
+                            <div className="flex flex-col sm:flex-row gap-4 items-center bg-gray-50 p-4 rounded-lg border border-gray-100">
                                 <Select value={selectedLineId} onValueChange={setSelectedLineId}>
-                                    <SelectTrigger className="bg-black/60 border-white/20 text-white w-full sm:w-[250px]">
+                                    <SelectTrigger className="bg-white border-gray-200 text-gray-900 w-full sm:w-[250px]">
                                         <SelectValue placeholder="Select Line..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -388,7 +388,7 @@ export default function MasterData() {
                                 </Select>
 
                                 <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
-                                    <SelectTrigger className="bg-black/60 border-white/20 text-white w-full sm:w-[250px]" disabled={!selectedLineId}>
+                                    <SelectTrigger className="bg-white border-gray-200 text-gray-900 w-full sm:w-[250px]" disabled={!selectedLineId}>
                                         <SelectValue placeholder="Select Category..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -397,66 +397,61 @@ export default function MasterData() {
                                 </Select>
 
                                 {selectedLineId && selectedCategoryId && !isAdding && (
-                                    <Button onClick={() => setIsAdding(true)} className="bg-[#4F8CFF] hover:bg-[#3b6dcc] text-white ml-auto">
-                                        <Plus className="w-4 h-4 mr-2" /> Add Item
+                                    <Button onClick={() => setIsAdding(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors ml-auto">
+                                        <Plus className="w-4 h-4" /> Add Item
                                     </Button>
                                 )}
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            {!selectedLineId || !selectedCategoryId ? (
-                                <div className="text-center py-12 text-neutral-500 italic border border-dashed border-white/10 rounded-lg">
-                                    Please select a Line and Category to manage check items.
-                                </div>
-                            ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="border-white/10 hover:bg-transparent">
-                                            <TableHead className="text-neutral-400 w-12">No</TableHead>
-                                            <TableHead className="text-neutral-400">Check Item Name</TableHead>
-                                            <TableHead className="text-neutral-400">What To Check</TableHead>
-                                            <TableHead className="text-right text-neutral-400">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
+                        </div>
+                        <div className="mt-6 border rounded-lg overflow-hidden">
+                            <Table className="divide-y">
+                                <TableHeader className="bg-gray-50/50">
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className="font-semibold text-gray-900 w-12 text-center">No</TableHead>
+                                        <TableHead className="font-semibold text-gray-900">Check Item Name</TableHead>
+                                        <TableHead className="font-semibold text-gray-900">What To Check</TableHead>
+                                        <TableHead className="text-right font-semibold text-gray-900">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
                                         {isAdding && (
-                                            <TableRow className="border-white/10 bg-white/5">
-                                                <TableCell>-</TableCell>
+                                            <TableRow className="bg-blue-50/30">
+                                                <TableCell className="text-center">-</TableCell>
                                                 <TableCell>
-                                                    <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Item Name (e.g. Machine A)" className="bg-black/60 border-white/20 text-white" />
+                                                    <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Item Name (e.g. Machine A)" className="bg-white border-gray-200 text-gray-900" />
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description (e.g. Check for leakage)" className="bg-black/60 border-white/20 text-white" />
+                                                    <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description (e.g. Check for leakage)" className="bg-white border-gray-200 text-gray-900" />
                                                 </TableCell>
                                                 <TableCell className="text-right space-x-2">
-                                                    <Button variant="ghost" size="icon" onClick={handleCreateCheckItem} className="text-[#4F8CFF]"><Check className="w-4 h-4" /></Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => setIsAdding(false)} className="text-red-400"><X className="w-4 h-4" /></Button>
+                                                    <Button variant="ghost" size="icon" onClick={handleCreateCheckItem} className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Check className="w-4 h-4" /></Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => setIsAdding(false)} className="h-8 w-8 text-red-500 hover:bg-red-50"><X className="w-4 h-4" /></Button>
                                                 </TableCell>
                                             </TableRow>
                                         )}
                                         {checkItems.length === 0 && !isAdding ? (
                                             <TableRow>
-                                                <TableCell colSpan={3} className="text-center py-8 text-neutral-500 italic">No check items found for this selection.</TableCell>
+                                                <TableCell colSpan={4} className="text-center py-8 text-gray-400 italic font-medium">No check items found for this selection.</TableCell>
                                             </TableRow>
                                         ) : (
                                             checkItems.map((item, idx) => (
-                                                <TableRow key={item.id} className="border-white/10 hover:bg-white/5">
-                                                    <TableCell className="text-neutral-400">{idx + 1}</TableCell>
-                                                    <TableCell className="text-white">
+                                                <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
+                                                    <TableCell className="text-gray-400 text-center py-3">{idx + 1}</TableCell>
+                                                    <TableCell className="text-gray-900 font-medium py-3">
                                                         {editingId === item.id ? (
-                                                            <Input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="bg-black/60 border-white/20 text-white" />
+                                                            <Input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="bg-white border-gray-200 text-gray-900" />
                                                         ) : item.itemName}
                                                     </TableCell>
-                                                    <TableCell className="text-white">
+                                                    <TableCell className="text-gray-600 py-3">
                                                         {editingId === item.id ? (
-                                                            <Input value={editingDescription} onChange={(e) => setEditingDescription(e.target.value)} className="bg-black/60 border-white/20 text-white" />
+                                                            <Input value={editingDescription} onChange={(e) => setEditingDescription(e.target.value)} className="bg-white border-gray-200 text-gray-900" />
                                                         ) : item.checkDescription}
                                                     </TableCell>
-                                                    <TableCell className="text-right space-x-2">
+                                                    <TableCell className="text-right space-x-1 py-3">
                                                         {editingId === item.id ? (
                                                             <>
-                                                                <Button variant="ghost" size="icon" onClick={() => handleUpdateCheckItem(item.id)} className="text-[#4F8CFF]"><Check className="w-4 h-4" /></Button>
-                                                                <Button variant="ghost" size="icon" onClick={() => setEditingId(null)} className="text-red-400"><X className="w-4 h-4" /></Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => handleUpdateCheckItem(item.id)} className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Check className="w-4 h-4" /></Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => setEditingId(null)} className="h-8 w-8 text-red-500 hover:bg-red-50"><X className="w-4 h-4" /></Button>
                                                             </>
                                                         ) : (
                                                             <>
@@ -464,8 +459,8 @@ export default function MasterData() {
                                                                     setEditingId(item.id);
                                                                     setEditingName(item.itemName);
                                                                     setEditingDescription(item.checkDescription);
-                                                                }} className="text-neutral-400 hover:text-white"><Edit2 className="w-4 h-4" /></Button>
-                                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteCheckItem(item.id)} className="text-red-400"><Trash2 className="w-4 h-4" /></Button>
+                                                                }} className="h-8 w-8 p-0 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"><Edit2 className="w-4 h-4" /></Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteCheckItem(item.id)} className="h-8 w-8 p-0 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></Button>
                                                             </>
                                                         )}
                                                     </TableCell>
@@ -474,11 +469,10 @@ export default function MasterData() {
                                         )}
                                     </TableBody>
                                 </Table>
-                            )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
-        </div>
-    );
+                            </div>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
+            </div>
+        );
 }
