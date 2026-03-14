@@ -32,6 +32,7 @@ interface CheckRow {
     itemId: string;
     item: string;
     checkDescription: string;
+    totalMp: string;
     judgment: "OK" | "NG";
     ngReason: string;
     countermeasurePlanDate: string;
@@ -154,6 +155,7 @@ export default function Input5M() {
                 itemId: item.id,
                 item: item.itemName,
                 checkDescription: item.checkDescription || "-",
+                totalMp: "",
                 judgment: "OK", // Default to OK per requirements
                 ngReason: "",
                 countermeasurePlanDate: "",
@@ -203,6 +205,7 @@ export default function Input5M() {
                 itemId: newItem.id,
                 item: newItem.itemName,
                 checkDescription: newItem.checkDescription || "-",
+                totalMp: "",
                 judgment: "OK",
                 ngReason: "",
                 countermeasurePlanDate: "",
@@ -232,6 +235,12 @@ export default function Input5M() {
             return;
         }
 
+        const isManCategory = selectedCategory?.name === "Man";
+        if (isManCategory && rows.some((r) => !r.totalMp.trim() || isNaN(Number(r.totalMp)))) {
+            toast.error("Please fill in the Total MP for all items in the Man category.");
+            return;
+        }
+
         try {
             setIsSubmitting(true);
             const payload = {
@@ -241,6 +250,7 @@ export default function Input5M() {
                 results: rows.map(r => ({
                     checkItemId: r.itemId,
                     status: r.judgment,
+                    totalMp: isManCategory ? Number(r.totalMp) : undefined,
                     ngReason: r.judgment === "NG" ? r.ngReason : undefined,
                     countermeasurePlanDate: r.judgment === "NG" ? r.countermeasurePlanDate : undefined,
                 }))
@@ -505,6 +515,9 @@ export default function Input5M() {
                                         <TableHead className="w-16 font-semibold">No</TableHead>
                                         <TableHead className="w-1/4 font-semibold">Check Item</TableHead>
                                         <TableHead className="w-1/4 font-semibold">What To Check</TableHead>
+                                        {selectedCategory?.name === "Man" && (
+                                            <TableHead className="w-24 font-semibold text-center">Total</TableHead>
+                                        )}
                                         <TableHead className="w-32 font-semibold text-center">Judgment</TableHead>
                                         <TableHead className="font-semibold">NG Details</TableHead>
                                     </TableRow>
@@ -516,6 +529,18 @@ export default function Input5M() {
                                                 <TableCell className="font-medium text-muted-foreground">{row.no}</TableCell>
                                                 <TableCell className="font-medium text-foreground">{row.item}</TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">{row.checkDescription}</TableCell>
+                                                {selectedCategory?.name === "Man" && (
+                                                    <TableCell className="text-center">
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            placeholder="0"
+                                                            value={row.totalMp}
+                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateRow(idx, "totalMp", e.target.value)}
+                                                            className="w-20 mx-auto text-center font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
+                                                    </TableCell>
+                                                )}
                                                 <TableCell className="text-center">
                                                     <Select value={row.judgment} onValueChange={(v) => updateRow(idx, "judgment", v as "OK" | "NG")}>
                                                         <SelectTrigger className={`w-full ${row.judgment === 'OK' ? 'border-success text-success bg-success/5' : 'border-destructive text-destructive bg-destructive/5'}`}>
@@ -537,7 +562,7 @@ export default function Input5M() {
                                             </TableRow>
                                             {row.judgment === "NG" && (
                                                 <TableRow className="border-border/50 bg-destructive/5 shadow-inner">
-                                                    <TableCell colSpan={5} className="p-0 pb-6 border-0">
+                                                    <TableCell colSpan={selectedCategory?.name === "Man" ? 6 : 5} className="p-0 pb-6 border-0">
                                                         <div className="ml-[4.5rem] mr-6 p-5 bg-background border border-destructive/20 rounded-lg shadow-sm relative overflow-hidden animate-in slide-in-from-top-2 fade-in duration-300">
                                                             <div className="absolute top-0 left-0 w-1.5 h-full bg-destructive/60" />
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-2">
