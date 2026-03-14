@@ -19,7 +19,7 @@ import { apiFetch } from "@/lib/api";
 type Department = { id: string; name: string };
 type Line = { id: string; name: string; departmentId: string; department?: Department };
 type Category = { id: string; name: string };
-type CheckItem = { id: string; itemName: string; lineId: string; categoryId: string };
+type CheckItem = { id: string; itemName: string; checkDescription: string; lineId: string; categoryId: string };
 
 export default function MasterData() {
     const [activeTab, setActiveTab] = useState("departments");
@@ -39,6 +39,8 @@ export default function MasterData() {
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState("");
+    const [editingDescription, setEditingDescription] = useState("");
+    const [newDescription, setNewDescription] = useState("");
 
     const loadBaseData = async () => {
         try {
@@ -83,6 +85,7 @@ export default function MasterData() {
         setIsAdding(false);
         setEditingId(null);
         setNewItemName("");
+        setNewDescription("");
         setNewDepartmentId("");
     }, [activeTab]);
 
@@ -161,22 +164,37 @@ export default function MasterData() {
 
     // --- CHECK ITEMS ---
     const handleCreateCheckItem = async () => {
-        if (!newItemName.trim() || !selectedLineId || !selectedCategoryId) return;
+        if (!newItemName.trim() || !newDescription.trim() || !selectedLineId || !selectedCategoryId) {
+            toast.error("Please provide both name and description");
+            return;
+        }
         try {
             await apiFetch("/master-data/check-items", {
                 method: "POST",
-                body: JSON.stringify({ itemName: newItemName.trim(), lineId: selectedLineId, categoryId: selectedCategoryId })
+                body: JSON.stringify({
+                    itemName: newItemName.trim(),
+                    checkDescription: newDescription.trim(),
+                    lineId: selectedLineId,
+                    categoryId: selectedCategoryId
+                })
             });
             toast.success("Check item created");
             setNewItemName("");
+            setNewDescription("");
             setIsAdding(false);
             loadCheckItems();
         } catch (e: any) { toast.error(e.message || "Failed to create check item"); }
     };
     const handleUpdateCheckItem = async (id: string) => {
-        if (!editingName.trim()) return;
+        if (!editingName.trim() || !editingDescription.trim()) return;
         try {
-            await apiFetch(`/master-data/check-items/${id}`, { method: "PATCH", body: JSON.stringify({ itemName: editingName.trim() }) });
+            await apiFetch(`/master-data/check-items/${id}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    itemName: editingName.trim(),
+                    checkDescription: editingDescription.trim()
+                })
+            });
             toast.success("Check item updated");
             setEditingId(null);
             loadCheckItems();
@@ -396,6 +414,7 @@ export default function MasterData() {
                                         <TableRow className="border-white/10 hover:bg-transparent">
                                             <TableHead className="text-neutral-400 w-12">No</TableHead>
                                             <TableHead className="text-neutral-400">Check Item Name</TableHead>
+                                            <TableHead className="text-neutral-400">What To Check</TableHead>
                                             <TableHead className="text-right text-neutral-400">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -404,7 +423,10 @@ export default function MasterData() {
                                             <TableRow className="border-white/10 bg-white/5">
                                                 <TableCell>-</TableCell>
                                                 <TableCell>
-                                                    <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Enter Check Item..." className="bg-black/60 border-white/20 text-white" autoFocus />
+                                                    <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Item Name (e.g. Machine A)" className="bg-black/60 border-white/20 text-white" />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description (e.g. Check for leakage)" className="bg-black/60 border-white/20 text-white" />
                                                 </TableCell>
                                                 <TableCell className="text-right space-x-2">
                                                     <Button variant="ghost" size="icon" onClick={handleCreateCheckItem} className="text-[#4F8CFF]"><Check className="w-4 h-4" /></Button>
@@ -422,8 +444,13 @@ export default function MasterData() {
                                                     <TableCell className="text-neutral-400">{idx + 1}</TableCell>
                                                     <TableCell className="text-white">
                                                         {editingId === item.id ? (
-                                                            <Input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="bg-black/60 border-white/20 text-white" autoFocus />
+                                                            <Input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="bg-black/60 border-white/20 text-white" />
                                                         ) : item.itemName}
+                                                    </TableCell>
+                                                    <TableCell className="text-white">
+                                                        {editingId === item.id ? (
+                                                            <Input value={editingDescription} onChange={(e) => setEditingDescription(e.target.value)} className="bg-black/60 border-white/20 text-white" />
+                                                        ) : item.checkDescription}
                                                     </TableCell>
                                                     <TableCell className="text-right space-x-2">
                                                         {editingId === item.id ? (
@@ -433,7 +460,11 @@ export default function MasterData() {
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <Button variant="ghost" size="icon" onClick={() => { setEditingId(item.id); setEditingName(item.itemName); }} className="text-neutral-400 hover:text-white"><Edit2 className="w-4 h-4" /></Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => {
+                                                                    setEditingId(item.id);
+                                                                    setEditingName(item.itemName);
+                                                                    setEditingDescription(item.checkDescription);
+                                                                }} className="text-neutral-400 hover:text-white"><Edit2 className="w-4 h-4" /></Button>
                                                                 <Button variant="ghost" size="icon" onClick={() => handleDeleteCheckItem(item.id)} className="text-red-400"><Trash2 className="w-4 h-4" /></Button>
                                                             </>
                                                         )}

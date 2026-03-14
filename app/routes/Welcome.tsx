@@ -26,6 +26,7 @@ const deptConfig: Record<string, { icon: typeof Factory; gradient: string; glow:
     "Tool Coolant": { icon: Droplets, gradient: "from-primary to-secondary", glow: "shadow-primary/20" },
     Office: { icon: Building2, gradient: "from-secondary to-primary", glow: "shadow-secondary/20" },
     "Die Maintenance": { icon: Cog, gradient: "from-primary to-secondary", glow: "shadow-primary/20" },
+    PAD: { icon: Building2, gradient: "from-secondary to-primary", glow: "shadow-secondary/20" },
 };
 
 const menuItems = [
@@ -260,7 +261,7 @@ const Welcome = () => {
                     className={`mt-12 text-xs text-muted-foreground/60 tracking-wider uppercase transition-all duration-1000 delay-1000 ${mounted ? "opacity-100" : "opacity-0"
                         }`}
                 >
-                    © Develop By Zaenal Arifin - EPKD Team 2026
+                    © Develop By Zaenal Arifin - 2026
                 </p>
             </div>
 
