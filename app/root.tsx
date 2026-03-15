@@ -12,11 +12,13 @@ import { Toaster as Sonner } from "~/components/ui/sonner";
 import { Toaster } from "~/components/ui/toaster";
 
 import type { Route } from "./+types/root";
+import iconUrl from "./assets/epkd-logo.png";
 import "./app.css";
 
 const queryClient = new QueryClient();
 
 export const links: Route.LinksFunction = () => [
+  { rel: "icon", href: iconUrl, type: "image/png" },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
     rel: "preconnect",
