@@ -19,7 +19,7 @@ import { apiFetch } from "@/lib/api";
 import { categories, categoryDescriptions } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { format, startOfToday } from "date-fns";
-import { Activity, ArrowLeft, BookOpen, CalendarDays, Check, Cog, Factory, Layers, Leaf, Package, PlusCircle, Save, ShieldCheck, Users } from "lucide-react";
+import { Activity, ArrowLeft, BookOpen, CalendarDays, Check, Cog, Factory, Layers, Leaf, Package, Pencil, PlusCircle, Save, ShieldCheck, Users } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -85,6 +85,13 @@ export default function Input5M() {
     const [newItemDescription, setNewItemDescription] = useState("");
     const [isAddingItem, setIsAddingItem] = useState(false);
 
+    // Modal state for editing check item
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingItemId, setEditingItemId] = useState("");
+    const [editingItemName, setEditingItemName] = useState("");
+    const [editingItemDescription, setEditingItemDescription] = useState("");
+    const [isUpdatingItem, setIsUpdatingItem] = useState(false);
+
     useEffect(() => {
         if (!deptName) {
             navigate("/"); // No department selected, go back to home
@@ -149,16 +156,47 @@ export default function Input5M() {
         setIsLoading(true);
         try {
             const items = await apiFetch<any[]>(`/master-data/check-items?lineId=${lineId}&categoryId=${categoryId}`);
-            setRows(items.map((item, i) => ({
+            const defaultRows = items.map((item, i) => ({
                 no: i + 1,
                 itemId: item.id,
                 item: item.itemName,
                 checkDescription: item.checkDescription || "-",
                 totalMp: "",
-                judgment: "OK", // Default to OK per requirements
+                judgment: "OK" as const,
                 ngReason: "",
                 countermeasurePlanDate: "",
-            })));
+            }));
+
+            // Try to load draft from localStorage
+            const draftKey = `epkd_draft_${lineId}_${selectedDayType}_${categoryId}`;
+            const savedDraft = localStorage.getItem(draftKey);
+
+            if (savedDraft) {
+                try {
+                    const draftData = JSON.parse(savedDraft);
+                    // Merge draft data into default items
+                    const mergedRows = defaultRows.map(row => {
+                        const draftRow = draftData.find((d: any) => d.itemId === row.itemId);
+                        if (draftRow) {
+                            return {
+                                ...row,
+                                judgment: draftRow.judgment || row.judgment,
+                                totalMp: draftRow.totalMp || row.totalMp,
+                                ngReason: draftRow.ngReason || row.ngReason,
+                                countermeasurePlanDate: draftRow.countermeasurePlanDate || row.countermeasurePlanDate,
+                            };
+                        }
+                        return row;
+                    });
+                    setRows(mergedRows);
+                    toast.info("Draft data loaded from browser.");
+                } catch (e) {
+                    console.error("Failed to parse draft", e);
+                    setRows(defaultRows);
+                }
+            } else {
+                setRows(defaultRows);
+            }
         } catch (error) {
             toast.error("Failed to load check items");
         } finally {
@@ -222,9 +260,50 @@ export default function Input5M() {
         }
     };
 
+    const handleEditClick = (row: CheckRow) => {
+        setEditingItemId(row.itemId);
+        setEditingItemName(row.item);
+        setEditingItemDescription(row.checkDescription);
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdateItem = async () => {
+        if (!editingItemName.trim()) {
+            toast.error("Item Name cannot be empty.");
+            return;
+        }
+
+        setIsUpdatingItem(true);
+        try {
+            await apiFetch(`/master-data/check-items/${editingItemId}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    itemName: editingItemName,
+                    checkDescription: editingItemDescription
+                })
+            });
+
+            setRows(prev => prev.map(r => 
+                r.itemId === editingItemId 
+                    ? { ...r, item: editingItemName, checkDescription: editingItemDescription } 
+                    : r
+            ));
+
+            toast.success("Check item updated successfully.");
+            setIsEditModalOpen(false);
+        } catch (error) {
+            toast.error("Failed to update check item.");
+        } finally {
+            setIsUpdatingItem(false);
+        }
+    };
+
     const handleSubmit = async (isDraft: boolean) => {
+        const draftKey = `epkd_draft_${selectedLine?.id}_${selectedDayType}_${selectedCategory?.id}`;
+
         if (isDraft) {
-            toast.success("Draft saved successfully (Local)");
+            localStorage.setItem(draftKey, JSON.stringify(rows));
+            toast.success("Draft saved successfully to browser");
             return;
         }
 
@@ -261,6 +340,9 @@ export default function Input5M() {
             });
 
             toast.success("Checksheet submitted successfully");
+
+            // Clear draft on success
+            localStorage.removeItem(draftKey);
 
             // Go back to Step 2 (Day Type) or Step 1 (Line)
             setSelectedCategory(null);
@@ -444,55 +526,100 @@ export default function Input5M() {
                     </p>
                 </div>
 
-                <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
-                            <PlusCircle className="w-4 h-4 mr-2" />
-                            Add Check Item
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>Add New Check Item</DialogTitle>
-                            <DialogDescription>
-                                Create a new checklist item for {selectedLine?.name} / {selectedCategory?.name}.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="space-y-2">
-                                <label htmlFor="name" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Item Name
-                                </label>
-                                <Input
-                                    id="name"
-                                    placeholder="Enter item name..."
-                                    value={newItemName}
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewItemName(e.target.value)}
-                                    autoFocus
-                                />
+                <div className="flex items-center gap-2">
+                    <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Edit Check Item</DialogTitle>
+                                <DialogDescription>
+                                    Update the details for this checklist item.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="space-y-2">
+                                    <label htmlFor="edit-name" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        Item Name
+                                    </label>
+                                    <Input
+                                        id="edit-name"
+                                        placeholder="Enter item name..."
+                                        value={editingItemName}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingItemName(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label htmlFor="edit-desc" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        What To Check
+                                    </label>
+                                    <Textarea
+                                        id="edit-desc"
+                                        placeholder="Describe what needs to be checked..."
+                                        value={editingItemDescription}
+                                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditingItemDescription(e.target.value)}
+                                    />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <label htmlFor="desc" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    What To Check
-                                </label>
-                                <Textarea
-                                    id="desc"
-                                    placeholder="Describe what needs to be checked..."
-                                    value={newItemDescription}
-                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewItemDescription(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
-                            <Button onClick={handleAddItem} disabled={isAddingItem || !newItemName.trim()}>
-                                {isAddingItem && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />}
-                                <Save className="w-4 h-4 mr-2" />
-                                Save Item
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+                                <Button onClick={handleUpdateItem} disabled={isUpdatingItem || !editingItemName.trim()}>
+                                    {isUpdatingItem && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />}
+                                    <Save className="w-4 h-4 mr-2" />
+                                    Update Item
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
+                                <PlusCircle className="w-4 h-4 mr-2" />
+                                Add Check Item
                             </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Add New Check Item</DialogTitle>
+                                <DialogDescription>
+                                    Create a new checklist item for {selectedLine?.name} / {selectedCategory?.name}.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="space-y-2">
+                                    <label htmlFor="name" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        Item Name
+                                    </label>
+                                    <Input
+                                        id="name"
+                                        placeholder="Enter item name..."
+                                        value={newItemName}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewItemName(e.target.value)}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label htmlFor="desc" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        What To Check
+                                    </label>
+                                    <Textarea
+                                        id="desc"
+                                        placeholder="Describe what needs to be checked..."
+                                        value={newItemDescription}
+                                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewItemDescription(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
+                                <Button onClick={handleAddItem} disabled={isAddingItem || !newItemName.trim()}>
+                                    {isAddingItem && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />}
+                                    <Save className="w-4 h-4 mr-2" />
+                                    Save Item
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             <Card className="border-border/50 shadow-sm">
@@ -526,7 +653,19 @@ export default function Input5M() {
                                         <React.Fragment key={idx}>
                                             <TableRow className={`h-14 transition-colors ${row.judgment === 'NG' ? 'bg-destructive/[0.03] border-b-0' : 'border-border/50 hover:bg-muted/5'}`}>
                                                 <TableCell className="text-center font-medium text-muted-foreground">{row.no}</TableCell>
-                                                <TableCell className="font-medium text-foreground min-w-[150px]">{row.item}</TableCell>
+                                                <TableCell className="font-medium text-foreground min-w-[150px]">
+                                                    <div className="flex items-center gap-2 group/item">
+                                                        <span>{row.item}</span>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="w-6 h-6 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                                            onClick={() => handleEditClick(row)}
+                                                        >
+                                                            <Pencil className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground min-w-[200px]">{row.checkDescription}</TableCell>
                                                 {selectedCategory?.name === "Man" && (
                                                     <TableCell className="text-center">
