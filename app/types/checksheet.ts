@@ -11,4 +11,5 @@ export interface ChecksheetEntry {
   date: string;
   planCountermeasureDate?: string;
   status: "draft" | "submitted" | "OK" | "NG";
+  shift?: string;
 }

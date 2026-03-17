@@ -10,6 +10,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type { ChecksheetEntry } from "@/types/checksheet";
 
 const Review = () => {
@@ -18,11 +19,13 @@ const Review = () => {
     const [filterLine, setFilterLine] = useState(searchParams.get("lineId") || "all");
     const [filterCat, setFilterCat] = useState(searchParams.get("categoryId") || "all");
     const [filterJudgment, setFilterJudgment] = useState(searchParams.get("status") || "all");
-    const [filterDayType, setFilterDayType] = useState(searchParams.get("dayType") || "all");
+    const [filterDayType, setFilterDayType] = useState(searchParams.get("stageId") || searchParams.get("dayType") || "all");
+    const [filterShift, setFilterShift] = useState(searchParams.get("shift") || "all");
 
     const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
     const [lines, setLines] = useState<{ id: string; name: string; departmentId: string }[]>([]);
     const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+    const [dbStages, setDbStages] = useState<{ id: string; name: string; label: string }[]>([]);
 
     // Data
     const [entries, setEntries] = useState<ChecksheetEntry[]>([]);
@@ -32,14 +35,16 @@ const Review = () => {
     useEffect(() => {
         const loadMasterData = async () => {
             try {
-                const [deptData, lineData, catData] = await Promise.all([
+                const [deptData, lineData, catData, stageData] = await Promise.all([
                     apiFetch<{ id: string; name: string }[]>("/master-data/departments"),
                     apiFetch<{ id: string; name: string; departmentId: string }[]>("/master-data/lines"),
-                    apiFetch<{ id: string; name: string }[]>("/master-data/categories")
+                    apiFetch<{ id: string; name: string }[]>("/master-data/categories"),
+                    apiFetch<{ id: string; name: string; label: string }[]>("/master-data/stages")
                 ]);
                 setDepartments(deptData);
                 setLines(lineData);
                 setCategories(catData);
+                setDbStages(stageData);
             } catch (error) {
                 console.error("Failed to load master data", error);
             }
@@ -55,7 +60,8 @@ const Review = () => {
                 if (filterDepartment !== "all") params.set("departmentId", filterDepartment);
                 if (filterLine !== "all") params.set("lineId", filterLine);
                 if (filterJudgment !== "all") params.set("status", filterJudgment);
-                if (filterDayType !== "all") params.set("dayType", filterDayType);
+                if (filterDayType !== "all") params.set("stageId", filterDayType);
+                if (filterShift !== "all") params.set("shift", filterShift);
 
                 // The backend API for getAllResults expects the category name, not ID.
                 const catObj = categories.find(c => c.id === filterCat);
@@ -77,7 +83,10 @@ const Review = () => {
                     category: item.category,
                     item: item.item,
                     judgment: item.status as "OK" | "NG",
+                    shift: item.shift,
                     reason: item.note || "",
+                    dayType: item.dayType || "", // Added to satisfy ChecksheetEntry
+                    status: item.status as "OK" | "NG", // Added to satisfy ChecksheetEntry
                     planCountermeasureDate: item.planCountermeasureDate,
                     date: item.checkDate ? new Date(item.checkDate).toISOString().split("T")[0] : "",
                 })) as ChecksheetEntry[];
@@ -95,7 +104,7 @@ const Review = () => {
         if (categories.length > 0 || filterCat === "all") {
             load();
         }
-    }, [filterDepartment, filterLine, filterCat, filterJudgment, filterDayType, categories]);
+    }, [filterDepartment, filterLine, filterCat, filterJudgment, filterDayType, filterShift, categories]);
 
     // Data for the Bar Chart
     const ngChartData = useMemo(() => {
@@ -184,11 +193,18 @@ const Review = () => {
                     <SelectTrigger className="w-48"><SelectValue placeholder="All Day Types" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Day Types</SelectItem>
-                        <SelectItem value="DAY_16">D-3 (16 Maret)</SelectItem>
-                        <SelectItem value="DAY_17">D-2 (17 Maret)</SelectItem>
-                        <SelectItem value="DAY_18">D-1 (18 Maret)</SelectItem>
-                        <SelectItem value="BEFORE_PRODUCTION">Before Production (29 Maret)</SelectItem>
-                        <SelectItem value="FIRST_DAY_PRODUCTION">First Day Production (30 Maret)</SelectItem>
+                        {dbStages.map((dt) => (
+                            <SelectItem key={dt.id} value={dt.id}>{dt.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+
+                <Select value={filterShift} onValueChange={setFilterShift}>
+                    <SelectTrigger className="w-32"><SelectValue placeholder="All Shifts" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Shifts</SelectItem>
+                        <SelectItem value="RED">RED</SelectItem>
+                        <SelectItem value="WHITE">WHITE</SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -198,6 +214,7 @@ const Review = () => {
                     setFilterCat("all");
                     setFilterJudgment("all");
                     setFilterDayType("all");
+                    setFilterShift("all");
                 }} className="ml-auto text-muted-foreground hover:text-foreground">
                     Reset Filters
                 </Button>
@@ -262,6 +279,7 @@ const Review = () => {
                             <TableRow className="hover:bg-transparent border-0">
                                 <TableHead className="w-[180px] text-xs font-semibold uppercase tracking-wide text-muted-foreground py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Department / Line</TableHead>
                                 <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Category</TableHead>
+                                <TableHead className="w-[80px] text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Shift</TableHead>
                                 <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Check Item Name</TableHead>
                                 <TableHead className="w-[90px] text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Judgment</TableHead>
                                 <TableHead className="w-[220px] text-xs font-semibold uppercase tracking-wide text-muted-foreground py-3 sticky top-0 z-10 bg-background border-b shadow-[0_1px_rgba(0,0,0,0.05)]">Reason</TableHead>
@@ -297,6 +315,16 @@ const Review = () => {
                                             <Badge variant="outline" className="text-[10px] bg-background px-2 py-0 h-5">
                                                 {row.category}
                                             </Badge>
+                                        </TableCell>
+                                        <TableCell className="w-[80px] text-center py-0">
+                                            {row.shift ? (
+                                                <Badge variant="outline" className={cn(
+                                                    "text-[10px] px-2 py-0 h-5 border-0 font-bold",
+                                                    row.shift === "RED" ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-700"
+                                                )}>
+                                                    {row.shift}
+                                                </Badge>
+                                            ) : <span className="text-xs text-muted-foreground">—</span>}
                                         </TableCell>
                                         <TableCell className="py-0">
                                             <div className="text-sm text-foreground truncate max-w-[400px]" title={row.item}>

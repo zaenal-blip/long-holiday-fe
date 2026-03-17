@@ -41,15 +41,7 @@ const catIcons: Record<string, any> = {
     Man: Users, Machine: Cog, Material: Package, Method: BookOpen, Environment: Leaf
 };
 
-const dayTypes = [
-    { id: "DAY_16", label: "D-3 (16 Maret)" },
-    { id: "DAY_17", label: "D-2 (17 Maret)" },
-    { id: "DAY_18", label: "D-1 (18 Maret)" },
-    { id: "BEFORE_PRODUCTION", label: "Before Production (29 Maret)" },
-    { id: "FIRST_DAY_PRODUCTION", label: "First Day Production (30 Maret)" },
-];
-
-// Define some line metadata for styling if it matches
+// Hardcoded metadata remains for styling
 const lineMetadata: Record<string, { icon: any; desc: string }> = {
     "Main Line": { icon: Activity, desc: "Primary assembly production line" },
     "Sub Line": { icon: Layers, desc: "Sub-assembly components production" },
@@ -72,12 +64,20 @@ export default function Input5M() {
     const [selectedLine, setSelectedLine] = useState<Line | null>(null);
     const [selectedDayType, setSelectedDayType] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<CategoryItem | null>(null);
+    const [selectedShift, setSelectedShift] = useState<string | null>(null);
 
     const [lines, setLines] = useState<Line[]>([]);
     const [dbCategories, setDbCategories] = useState<CategoryItem[]>([]);
+    const [dbStages, setDbStages] = useState<{ id: string; name: string; label: string }[]>([]);
     const [rows, setRows] = useState<CheckRow[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Modal state for adding new day type (stage)
+    const [isAddStageOpen, setIsAddStageOpen] = useState(false);
+    const [newStageName, setNewStageName] = useState("");
+    const [newStageLabel, setNewStageLabel] = useState("");
+    const [isAddingStage, setIsAddingStage] = useState(false);
 
     // Modal state for adding new check item
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -94,9 +94,17 @@ export default function Input5M() {
 
     useEffect(() => {
         if (!deptName) {
+            const lastDept = localStorage.getItem("lastDept");
+            if (lastDept) {
+                navigate(`/input-5m?dept=${lastDept}`, { replace: true });
+                return;
+            }
             navigate("/"); // No department selected, go back to home
             return;
         }
+
+        // Save last used dept
+        localStorage.setItem("lastDept", deptName);
 
         const loadInitialData = async () => {
             setIsLoading(true);
@@ -108,12 +116,14 @@ export default function Input5M() {
                 if (!currentDept) {
                     toast.error(`Department ${deptName} not found in database.`);
                 } else {
-                    const [linesData, catsData] = await Promise.all([
+                    const [linesData, catsData, stagesData] = await Promise.all([
                         apiFetch<Line[]>(`/master-data/lines?departmentId=${currentDept.id}`),
-                        apiFetch<CategoryItem[]>("/master-data/categories")
+                        apiFetch<CategoryItem[]>("/master-data/categories"),
+                        apiFetch<{ id: string; name: string; label: string }[]>("/master-data/stages")
                     ]);
                     setLines(linesData);
                     setDbCategories(catsData);
+                    setDbStages(stagesData);
 
                     // Auto-skip line selection for non-production departments (they have exactly 1 virtual line)
                     if (!["Production", "Office", "PAD"].includes(currentDept.name) && linesData.length > 0) {
@@ -283,9 +293,9 @@ export default function Input5M() {
                 })
             });
 
-            setRows(prev => prev.map(r => 
-                r.itemId === editingItemId 
-                    ? { ...r, item: editingItemName, checkDescription: editingItemDescription } 
+            setRows(prev => prev.map(r =>
+                r.itemId === editingItemId
+                    ? { ...r, item: editingItemName, checkDescription: editingItemDescription }
                     : r
             ));
 
@@ -319,15 +329,21 @@ export default function Input5M() {
             return;
         }
 
+        if (isManCategory && !selectedShift) {
+            toast.error("Please select a shift (RED/WHITE)");
+            return;
+        }
+
         try {
             setIsSubmitting(true);
             const payload = {
                 lineId: selectedLine!.id,
-                dayType: selectedDayType,
+                stageId: selectedDayType,
                 checkDate: new Date().toISOString().split("T")[0],
                 results: rows.map(r => ({
                     checkItemId: r.itemId,
                     status: r.judgment,
+                    shift: isManCategory ? selectedShift : undefined,
                     totalMp: isManCategory ? Number(r.totalMp) : undefined,
                     ngReason: r.judgment === "NG" ? r.ngReason : undefined,
                     countermeasurePlanDate: r.judgment === "NG" ? r.countermeasurePlanDate : undefined,
@@ -347,6 +363,7 @@ export default function Input5M() {
             // Go back to Step 2 (Day Type) or Step 1 (Line)
             setSelectedCategory(null);
             setSelectedDayType(null);
+            setSelectedShift(null);
             setRows([]);
 
             if (!["Production", "Office", "PAD"].includes(deptName!)) {
@@ -449,7 +466,7 @@ export default function Input5M() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 transition-all duration-500">
-                    {dayTypes.map((dt) => (
+                    {dbStages.map((dt) => (
                         <Card
                             key={dt.id}
                             className={`relative group cursor-pointer border-border/50 bg-card hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 overflow-hidden ${selectedDayType === dt.id ? "ring-2 ring-primary border-primary" : ""
@@ -464,6 +481,99 @@ export default function Input5M() {
                             </CardContent>
                         </Card>
                     ))}
+
+                    {/* Add New Day Type Card */}
+                    <Dialog open={isAddStageOpen} onOpenChange={setIsAddStageOpen}>
+                        <DialogTrigger asChild>
+                            <Card className="relative group cursor-pointer border-dashed border-2 border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all duration-300 overflow-hidden">
+                                <CardContent className="p-6 flex items-center gap-5 justify-center">
+                                    <PlusCircle className="w-8 h-8 text-primary/60 group-hover:text-primary transition-colors" />
+                                    <span className="font-bold text-lg text-primary/70 group-hover:text-primary transition-colors">Add Day Type</span>
+                                </CardContent>
+                            </Card>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px] border-primary/20 bg-background/95 backdrop-blur-sm">
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                    <CalendarDays className="w-5 h-5 text-primary" />
+                                    Add New Day Type
+                                </DialogTitle>
+                                <DialogDescription className="text-muted-foreground/80 font-medium">
+                                    Enter a name and label for the new dynamic day type. Example: D-4, 15 Maret.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-6 py-6">
+                                <div className="space-y-2">
+                                    <label htmlFor="stageName" className="text-sm font-bold text-foreground flex items-center gap-1.5 ml-1">
+                                        Internal Name <span className="text-destructive">*</span>
+                                    </label>
+                                    <Input
+                                        id="stageName"
+                                        placeholder="e.g. DAY_15"
+                                        value={newStageName}
+                                        onChange={(e) => setNewStageName(e.target.value)}
+                                        className="h-11 bg-muted/30 border-border/50 focus:border-primary/50 transition-all"
+                                    />
+                                    <p className="text-[10px] text-muted-foreground ml-1 italic font-medium">Unique identifier, uppercase recommended (e.g. DAY_15)</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label htmlFor="stageLabel" className="text-sm font-bold text-foreground flex items-center gap-1.5 ml-1">
+                                        Display Label <span className="text-destructive">*</span>
+                                    </label>
+                                    <Input
+                                        id="stageLabel"
+                                        placeholder="e.g. D-4 (15 Maret)"
+                                        value={newStageLabel}
+                                        onChange={(e) => setNewStageLabel(e.target.value)}
+                                        className="h-11 bg-muted/30 border-border/50 focus:border-primary/50 transition-all"
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setIsAddStageOpen(false)}
+                                    disabled={isAddingStage}
+                                    className="border-primary/20 hover:bg-primary/5"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={async () => {
+                                        if (!newStageName.trim() || !newStageLabel.trim()) {
+                                            toast.error("Please fill in both fields.");
+                                            return;
+                                        }
+                                        setIsAddingStage(true);
+                                        try {
+                                            const newStage = await apiFetch<any>("/master-data/stages", {
+                                                method: "POST",
+                                                body: JSON.stringify({ name: newStageName.trim().toUpperCase(), label: newStageLabel.trim() })
+                                            });
+                                            setDbStages([...dbStages, newStage]);
+                                            setIsAddStageOpen(false);
+                                            setNewStageName("");
+                                            setNewStageLabel("");
+                                            toast.success("New day type added successfully.");
+                                        } catch (e) {
+                                            toast.error("Failed to add day type. Name might be already taken.");
+                                        } finally {
+                                            setIsAddingStage(false);
+                                        }
+                                    }}
+                                    disabled={isAddingStage}
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+                                >
+                                    {isAddingStage ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-primary-foreground/20 border-t-primary-foreground rounded-full animate-spin" />
+                                            Adding...
+                                        </div>
+                                    ) : "Add Day Type"}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
         );
@@ -484,7 +594,7 @@ export default function Input5M() {
                             <> → Line: <span className="text-primary">{selectedLine.name}</span></>
                         )}
                         {selectedDayType && (
-                            <> → Day Type: <span className="text-primary">{dayTypes.find(d => d.id === selectedDayType)?.label}</span></>
+                            <> → Day Type: <span className="text-primary">{dbStages.find(d => d.id === selectedDayType)?.label}</span></>
                         )}
                     </p>
                 </div>
@@ -521,10 +631,34 @@ export default function Input5M() {
                     <p className="text-sm font-medium text-muted-foreground/80 mt-1">
                         {deptName}
                         {["Production", "Office", "PAD"].includes(deptName!) && selectedLine && ` → ${selectedLine.name}`}
-                        {' '}→ <span className="text-primary">{dayTypes.find(d => d.id === selectedDayType)?.label}</span>
+                        {' '}→ <span className="text-primary">{dbStages.find(d => d.id === selectedDayType)?.label}</span>
                         {' '}→ <span className="text-primary">{selectedCategory?.name}</span>
                     </p>
                 </div>
+
+                {selectedCategory?.name === "Man" && (
+                    <div className="flex items-center gap-3 bg-muted/50 p-2 rounded-lg border border-border/50">
+                        <span className="text-sm font-semibold text-muted-foreground ml-2">SHIFT:</span>
+                        <div className="flex gap-1">
+                            {["RED", "WHITE"].map((shift) => (
+                                <Button
+                                    key={shift}
+                                    variant={selectedShift === shift ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setSelectedShift(shift)}
+                                    className={cn(
+                                        "px-4 font-bold transition-all duration-300",
+                                        shift === "RED" 
+                                            ? (selectedShift === "RED" ? "bg-red-600 hover:bg-red-700 text-white border-red-600" : "text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700")
+                                            : (selectedShift === "WHITE" ? "bg-slate-200 hover:bg-slate-300 text-slate-800 border-slate-300" : "text-slate-600 border-slate-200 hover:bg-slate-50")
+                                    )}
+                                >
+                                    {shift}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex items-center gap-2">
                     <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
@@ -635,40 +769,40 @@ export default function Input5M() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <Table containerClassName="max-h-[600px] overflow-y-auto">
+                            <Table containerClassName="max-h-[600px] overflow-y-auto" className="table-fixed">
                                 <TableHeader>
                                     <TableRow className="hover:bg-transparent">
-                                        <TableHead className="w-16 h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap text-center">No</TableHead>
-                                        <TableHead className="h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Check Item</TableHead>
-                                        <TableHead className="h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">What To Check</TableHead>
+                                        <TableHead className="w-12 h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">No</TableHead>
+                                        <TableHead className="w-48 h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-normal">Check Item</TableHead>
+                                        <TableHead className="w-80 h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-normal">What To Check</TableHead>
                                         {selectedCategory?.name === "Man" && (
-                                            <TableHead className="w-24 h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap text-center">Total MP</TableHead>
+                                            <TableHead className="w-24 h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Total MP</TableHead>
                                         )}
-                                        <TableHead className="w-32 h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap text-center">Judgment</TableHead>
-                                        <TableHead className="h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">NG Details</TableHead>
+                                        <TableHead className="w-32 h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Judgment</TableHead>
+                                        <TableHead className="h-11 sticky top-0 z-[11] bg-background shadow-[0_1px_0_0_rgba(0,0,0,0.1)] text-xs font-semibold uppercase tracking-wide text-muted-foreground">NG Details</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {rows.map((row, idx) => (
                                         <React.Fragment key={idx}>
                                             <TableRow className={`h-14 transition-colors ${row.judgment === 'NG' ? 'bg-destructive/[0.03] border-b-0' : 'border-border/50 hover:bg-muted/5'}`}>
-                                                <TableCell className="text-center font-medium text-muted-foreground">{row.no}</TableCell>
-                                                <TableCell className="font-medium text-foreground min-w-[150px]">
-                                                    <div className="flex items-center gap-2 group/item">
+                                                <TableCell className="w-12 text-center font-medium text-muted-foreground">{row.no}</TableCell>
+                                                <TableCell className="w-48 font-medium text-foreground whitespace-normal break-words leading-relaxed">
+                                                    <div className="flex items-start gap-2 group/item">
                                                         <span>{row.item}</span>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="w-6 h-6 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="w-6 h-6 shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity"
                                                             onClick={() => handleEditClick(row)}
                                                         >
                                                             <Pencil className="w-3 h-3 text-muted-foreground hover:text-primary" />
                                                         </Button>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-sm text-muted-foreground min-w-[200px]">{row.checkDescription}</TableCell>
+                                                <TableCell className="w-80 text-sm text-muted-foreground whitespace-normal break-words leading-relaxed">{row.checkDescription}</TableCell>
                                                 {selectedCategory?.name === "Man" && (
-                                                    <TableCell className="text-center">
+                                                    <TableCell className="w-24 text-center">
                                                         <Input
                                                             type="number"
                                                             min="0"
@@ -679,7 +813,7 @@ export default function Input5M() {
                                                         />
                                                     </TableCell>
                                                 )}
-                                                <TableCell className="text-center">
+                                                <TableCell className="w-32 text-center">
                                                     <Select value={row.judgment} onValueChange={(v) => updateRow(idx, "judgment", v as "OK" | "NG")}>
                                                         <SelectTrigger className={`w-full ${row.judgment === 'OK' ? 'border-success text-success bg-success/5' : 'border-destructive text-destructive bg-destructive/5'}`}>
                                                             <SelectValue placeholder="Select" />
