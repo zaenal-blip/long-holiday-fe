@@ -206,9 +206,9 @@ export default function MasterData() {
 
     // --- CHECK ITEMS ---
     const handleCreateCheckItem = async () => {
-        const validItems = newCheckItems.filter(item => item.itemName.trim() && item.checkDescription.trim());
+        const validItems = newCheckItems.filter(item => item.itemName.trim());
         if (validItems.length === 0) {
-            toast.error("Please provide both name and description for at least one item");
+            toast.error("Please provide an item name for at least one row");
             return;
         }
 
@@ -241,7 +241,10 @@ export default function MasterData() {
         } catch (e: any) { toast.error(e.message || "Failed to create check items"); }
     };
     const handleUpdateCheckItem = async (id: string) => {
-        if (!editingName.trim() || !editingDescription.trim()) return;
+        if (!editingName.trim()) {
+            toast.error("Item name cannot be empty");
+            return;
+        }
         try {
             await apiFetch(`/master-data/check-items/${id}`, {
                 method: "PATCH",
@@ -513,7 +516,7 @@ export default function MasterData() {
                                                                     newItems[idx].checkDescription = e.target.value;
                                                                     setNewCheckItems(newItems);
                                                                 }} 
-                                                                placeholder="Description (e.g. Check for leakage)" 
+                                                                placeholder="Optional Description (e.g. Check for leakage)" 
                                                                 className="bg-white border-gray-200 text-gray-900" 
                                                             />
                                                         </TableCell>
