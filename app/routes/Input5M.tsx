@@ -683,7 +683,7 @@ export default function Input5M() {
                                 </div>
                                 <div className="space-y-2">
                                     <label htmlFor="edit-desc" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                        What To Check
+                                        What To Check (Optional)
                                     </label>
                                     <Textarea
                                         id="edit-desc"
@@ -733,7 +733,7 @@ export default function Input5M() {
                                 </div>
                                 <div className="space-y-2">
                                     <label htmlFor="desc" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                        What To Check
+                                        What To Check (Optional)
                                     </label>
                                     <Textarea
                                         id="desc"
