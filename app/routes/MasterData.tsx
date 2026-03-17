@@ -45,6 +45,7 @@ export default function MasterData() {
     const [editingLabel, setEditingLabel] = useState("");
     const [editingDescription, setEditingDescription] = useState("");
     const [newCheckItems, setNewCheckItems] = useState([{ itemName: "", checkDescription: "" }]);
+    const [applyToAllLines, setApplyToAllLines] = useState(false);
 
     const loadBaseData = async () => {
         try {
@@ -93,6 +94,7 @@ export default function MasterData() {
         setNewItemName("");
         setNewItemLabel("");
         setNewCheckItems([{ itemName: "", checkDescription: "" }]);
+        setApplyToAllLines(false);
         setNewDepartmentId("");
     }, [activeTab]);
 
@@ -209,20 +211,31 @@ export default function MasterData() {
             toast.error("Please provide both name and description for at least one item");
             return;
         }
+
+        const isEnvironment = categories.find(c => c.id === selectedCategoryId)?.name === "Environment";
+        const targetLineIds = (isEnvironment && applyToAllLines) ? lines.map(l => l.id) : [selectedLineId];
+
         try {
-            await Promise.all(validItems.map(item => 
-                apiFetch("/master-data/check-items", {
-                    method: "POST",
-                    body: JSON.stringify({
-                        itemName: item.itemName.trim(),
-                        checkDescription: item.checkDescription.trim(),
-                        lineId: selectedLineId,
-                        categoryId: selectedCategoryId
-                    })
-                })
-            ));
-            toast.success("Check items created");
+            const promises = [];
+            for (const lineId of targetLineIds) {
+                for (const item of validItems) {
+                    promises.push(
+                        apiFetch("/master-data/check-items", {
+                            method: "POST",
+                            body: JSON.stringify({
+                                itemName: item.itemName.trim(),
+                                checkDescription: item.checkDescription.trim(),
+                                lineId: lineId,
+                                categoryId: selectedCategoryId
+                            })
+                        })
+                    );
+                }
+            }
+            await Promise.all(promises);
+            toast.success(targetLineIds.length > 1 ? `Check items created for ${targetLineIds.length} lines` : "Check items created");
             setNewCheckItems([{ itemName: "", checkDescription: "" }]);
+            setApplyToAllLines(false);
             setIsAdding(false);
             loadCheckItems();
         } catch (e: any) { toast.error(e.message || "Failed to create check items"); }
@@ -461,6 +474,21 @@ export default function MasterData() {
                                 <TableBody>
                                         {isAdding && (
                                             <>
+                                                {categories.find(c => c.id === selectedCategoryId)?.name === "Environment" && (
+                                                    <TableRow className="bg-blue-50/20">
+                                                        <TableCell colSpan={4} className="px-4 py-3 border-b-blue-100">
+                                                            <label className="flex items-center space-x-2 text-sm text-blue-800 font-medium cursor-pointer w-fit">
+                                                                <input 
+                                                                    type="checkbox" 
+                                                                    checked={applyToAllLines} 
+                                                                    onChange={(e) => setApplyToAllLines(e.target.checked)} 
+                                                                    className="rounded border-blue-400 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer" 
+                                                                />
+                                                                <span>Apply these items to ALL LINES in the system</span>
+                                                            </label>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
                                                 {newCheckItems.map((item, idx) => (
                                                     <TableRow key={`new-${idx}`} className="bg-blue-50/30">
                                                         <TableCell className="text-center">{idx + 1}</TableCell>
