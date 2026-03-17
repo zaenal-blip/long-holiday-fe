@@ -11,14 +11,7 @@ type CategoryProgress = { id: string; name: string; total: number; ok: number; n
 type LineProgress = { id: string; name: string; department: string; total: number; ok: number; ng: number };
 type Summary = { okCount: number; ngCount: number };
 
-const dayTypes = [
-    { id: "DAY_16", label: "Tanggal 16" },
-    { id: "DAY_17", label: "Tanggal 17" },
-    { id: "DAY_18", label: "Tanggal 18" },
-    { id: "BEFORE_PRODUCTION", label: "Before Production (29 Mar)" },
-    { id: "FIRST_DAY_PRODUCTION", label: "First Day Production (30 Mar)" },
-];
-
+// Stages are fetched from DB
 const Dashboard = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -32,6 +25,7 @@ const Dashboard = () => {
     // Master Data
     const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
     const [lines, setLines] = useState<{ id: string; name: string; departmentId: string }[]>([]);
+    const [dbStages, setDbStages] = useState<{ id: string; name: string; label: string }[]>([]);
 
     // Aggregation Data
     const [summary, setSummary] = useState<Summary>({ okCount: 0, ngCount: 0 });
@@ -42,12 +36,14 @@ const Dashboard = () => {
     useEffect(() => {
         const loadMasterData = async () => {
             try {
-                const [deptData, lineData] = await Promise.all([
+                const [deptData, lineData, stageData] = await Promise.all([
                     apiFetch<{ id: string; name: string }[]>("/master-data/departments"),
-                    apiFetch<{ id: string; name: string; departmentId: string }[]>("/master-data/lines")
+                    apiFetch<{ id: string; name: string; departmentId: string }[]>("/master-data/lines"),
+                    apiFetch<{ id: string; name: string; label: string }[]>("/master-data/stages")
                 ]);
                 setDepartments(deptData);
                 setLines(lineData);
+                setDbStages(stageData);
             } catch (error) {
                 console.error("Failed to load master data", error);
             }
@@ -62,7 +58,7 @@ const Dashboard = () => {
             if (filterDepartment !== "all") params.set("departmentId", filterDepartment);
             if (filterLine !== "all") params.set("lineId", filterLine);
             if (filterCategory !== "all") params.set("categoryId", filterCategory);
-            if (filterDayType !== "all") params.set("dayType", filterDayType);
+            if (filterDayType !== "all") params.set("stageId", filterDayType);
 
             const [summaryData, catData, lineData] = await Promise.all([
                 apiFetch<Summary>(`/checking/summary?${params.toString()}`),
@@ -130,7 +126,7 @@ const Dashboard = () => {
                             <SelectTrigger className="w-44 bg-white border-[#E5E7EB] shadow-sm"><SelectValue placeholder="All Day Types" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Day Types</SelectItem>
-                                {dayTypes.map((dt) => <SelectItem key={dt.id} value={dt.id}>{dt.label}</SelectItem>)}
+                                {dbStages.map((dt) => <SelectItem key={dt.id} value={dt.id}>{dt.label}</SelectItem>)}
                             </SelectContent>
                         </Select>
 
@@ -168,7 +164,7 @@ const Dashboard = () => {
                             params.set("status", "NG");
                             if (filterDepartment !== "all") params.set("departmentId", filterDepartment);
                             if (filterLine !== "all") params.set("lineId", filterLine);
-                            if (filterDayType !== "all") params.set("dayType", filterDayType);
+                            if (filterDayType !== "all") params.set("stageId", filterDayType);
                             navigate(`/review?${params.toString()}`);
                         }}
                     >
@@ -259,7 +255,7 @@ const Dashboard = () => {
                                 const reviewParams = new URLSearchParams();
                                 reviewParams.set("lineId", line.id);
                                 if (filterCategory !== "all") reviewParams.set("categoryId", filterCategory);
-                                if (filterDayType !== "all") reviewParams.set("dayType", filterDayType);
+                                if (filterDayType !== "all") reviewParams.set("stageId", filterDayType);
 
                                 // Show either Line Name (for Production) or Department Name (for others)
                                 const displayName = line.department === "Production" ? line.name : line.department;

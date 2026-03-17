@@ -20,6 +20,7 @@ type Department = { id: string; name: string };
 type Line = { id: string; name: string; departmentId: string; department?: Department };
 type Category = { id: string; name: string };
 type CheckItem = { id: string; itemName: string; checkDescription: string; lineId: string; categoryId: string };
+type Stage = { id: string; name: string; label: string };
 
 export default function MasterData() {
     const [activeTab, setActiveTab] = useState("departments");
@@ -27,6 +28,7 @@ export default function MasterData() {
     const [lines, setLines] = useState<Line[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [checkItems, setCheckItems] = useState<CheckItem[]>([]);
+    const [stages, setStages] = useState<Stage[]>([]);
 
     // Selection states for Check Items tab
     const [selectedLineId, setSelectedLineId] = useState<string>("");
@@ -35,23 +37,27 @@ export default function MasterData() {
     // Addition & Editing states
     const [isAdding, setIsAdding] = useState(false);
     const [newItemName, setNewItemName] = useState("");
+    const [newItemLabel, setNewItemLabel] = useState("");
     const [newDepartmentId, setNewDepartmentId] = useState(""); // For adding Line
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState("");
+    const [editingLabel, setEditingLabel] = useState("");
     const [editingDescription, setEditingDescription] = useState("");
-    const [newDescription, setNewDescription] = useState("");
+    const [newCheckItems, setNewCheckItems] = useState([{ itemName: "", checkDescription: "" }]);
 
     const loadBaseData = async () => {
         try {
-            const [deps, lns, cats] = await Promise.all([
+            const [deps, lns, cats, stgs] = await Promise.all([
                 apiFetch<Department[]>("/master-data/departments"),
                 apiFetch<Line[]>("/master-data/lines"),
-                apiFetch<Category[]>("/master-data/categories")
+                apiFetch<Category[]>("/master-data/categories"),
+                apiFetch<Stage[]>("/master-data/stages")
             ]);
             setDepartments(deps);
             setLines(lns);
             setCategories(cats);
+            setStages(stgs);
         } catch (error) {
             toast.error("Failed to load master data");
         }
@@ -85,7 +91,8 @@ export default function MasterData() {
         setIsAdding(false);
         setEditingId(null);
         setNewItemName("");
-        setNewDescription("");
+        setNewItemLabel("");
+        setNewCheckItems([{ itemName: "", checkDescription: "" }]);
         setNewDepartmentId("");
     }, [activeTab]);
 
@@ -162,28 +169,63 @@ export default function MasterData() {
         } catch (e: any) { toast.error(e.message || "Failed to delete line. It might be in use."); }
     };
 
-    // --- CHECK ITEMS ---
-    const handleCreateCheckItem = async () => {
-        if (!newItemName.trim() || !newDescription.trim() || !selectedLineId || !selectedCategoryId) {
-            toast.error("Please provide both name and description");
+    // --- STAGES ---
+    const handleCreateStage = async () => {
+        if (!newItemName.trim() || !newItemLabel.trim()) {
+            toast.error("Provide both name and label");
             return;
         }
         try {
-            await apiFetch("/master-data/check-items", {
-                method: "POST",
-                body: JSON.stringify({
-                    itemName: newItemName.trim(),
-                    checkDescription: newDescription.trim(),
-                    lineId: selectedLineId,
-                    categoryId: selectedCategoryId
-                })
-            });
-            toast.success("Check item created");
+            await apiFetch("/master-data/stages", { method: "POST", body: JSON.stringify({ name: newItemName.trim().toUpperCase(), label: newItemLabel.trim() }) });
+            toast.success("Day type created");
             setNewItemName("");
-            setNewDescription("");
+            setNewItemLabel("");
+            setIsAdding(false);
+            loadBaseData();
+        } catch (e: any) { toast.error(e.message || "Failed to create day type"); }
+    };
+    const handleUpdateStage = async (id: string) => {
+        if (!editingName.trim() || !editingLabel.trim()) return;
+        try {
+            await apiFetch(`/master-data/stages/${id}`, { method: "PATCH", body: JSON.stringify({ name: editingName.trim().toUpperCase(), label: editingLabel.trim() }) });
+            toast.success("Day type updated");
+            setEditingId(null);
+            loadBaseData();
+        } catch (e: any) { toast.error(e.message || "Failed to update day type"); }
+    };
+    const handleDeleteStage = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this day type?")) return;
+        try {
+            await apiFetch(`/master-data/stages/${id}`, { method: "DELETE" });
+            toast.success("Day type deleted");
+            loadBaseData();
+        } catch (e: any) { toast.error(e.message || "Failed to delete day type. It might be in use."); }
+    };
+
+    // --- CHECK ITEMS ---
+    const handleCreateCheckItem = async () => {
+        const validItems = newCheckItems.filter(item => item.itemName.trim() && item.checkDescription.trim());
+        if (validItems.length === 0) {
+            toast.error("Please provide both name and description for at least one item");
+            return;
+        }
+        try {
+            await Promise.all(validItems.map(item => 
+                apiFetch("/master-data/check-items", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        itemName: item.itemName.trim(),
+                        checkDescription: item.checkDescription.trim(),
+                        lineId: selectedLineId,
+                        categoryId: selectedCategoryId
+                    })
+                })
+            ));
+            toast.success("Check items created");
+            setNewCheckItems([{ itemName: "", checkDescription: "" }]);
             setIsAdding(false);
             loadCheckItems();
-        } catch (e: any) { toast.error(e.message || "Failed to create check item"); }
+        } catch (e: any) { toast.error(e.message || "Failed to create check items"); }
     };
     const handleUpdateCheckItem = async (id: string) => {
         if (!editingName.trim() || !editingDescription.trim()) return;
@@ -228,6 +270,9 @@ export default function MasterData() {
                     </TabsTrigger>
                     <TabsTrigger value="check-items" className="px-6 py-2 rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 transition-all gap-2 text-gray-600 h-9">
                         <ClipboardList className="w-4 h-4" /> Check Items
+                    </TabsTrigger>
+                    <TabsTrigger value="stages" className="px-6 py-2 rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 transition-all gap-2 text-gray-600 h-9">
+                        <LayoutGrid className="w-4 h-4" /> Stages
                     </TabsTrigger>
                 </TabsList>
 
@@ -415,19 +460,66 @@ export default function MasterData() {
                                 </TableHeader>
                                 <TableBody>
                                         {isAdding && (
-                                            <TableRow className="bg-blue-50/30">
-                                                <TableCell className="text-center">-</TableCell>
-                                                <TableCell>
-                                                    <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Item Name (e.g. Machine A)" className="bg-white border-gray-200 text-gray-900" />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description (e.g. Check for leakage)" className="bg-white border-gray-200 text-gray-900" />
-                                                </TableCell>
-                                                <TableCell className="text-right space-x-2">
-                                                    <Button variant="ghost" size="icon" onClick={handleCreateCheckItem} className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Check className="w-4 h-4" /></Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => setIsAdding(false)} className="h-8 w-8 text-red-500 hover:bg-red-50"><X className="w-4 h-4" /></Button>
-                                                </TableCell>
-                                            </TableRow>
+                                            <>
+                                                {newCheckItems.map((item, idx) => (
+                                                    <TableRow key={`new-${idx}`} className="bg-blue-50/30">
+                                                        <TableCell className="text-center">{idx + 1}</TableCell>
+                                                        <TableCell>
+                                                            <Input 
+                                                                value={item.itemName} 
+                                                                onChange={(e) => {
+                                                                    const newItems = [...newCheckItems];
+                                                                    newItems[idx].itemName = e.target.value;
+                                                                    setNewCheckItems(newItems);
+                                                                }} 
+                                                                placeholder="Item Name (e.g. Machine A)" 
+                                                                className="bg-white border-gray-200 text-gray-900" 
+                                                                autoFocus={idx === newCheckItems.length - 1}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Input 
+                                                                value={item.checkDescription} 
+                                                                onChange={(e) => {
+                                                                    const newItems = [...newCheckItems];
+                                                                    newItems[idx].checkDescription = e.target.value;
+                                                                    setNewCheckItems(newItems);
+                                                                }} 
+                                                                placeholder="Description (e.g. Check for leakage)" 
+                                                                className="bg-white border-gray-200 text-gray-900" 
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell className="text-right space-x-2">
+                                                            <Button variant="ghost" size="icon" onClick={() => {
+                                                                const newItems = newCheckItems.filter((_, i) => i !== idx);
+                                                                if (newItems.length === 0) setIsAdding(false);
+                                                                setNewCheckItems(newItems.length ? newItems : [{ itemName: "", checkDescription: "" }]);
+                                                            }} className="h-8 w-8 text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                <TableRow className="bg-blue-50/10">
+                                                    <TableCell colSpan={4} className="p-4 border-t border-blue-100">
+                                                        <div className="flex justify-between items-center">
+                                                            <Button 
+                                                                variant="outline" 
+                                                                onClick={() => setNewCheckItems([...newCheckItems, { itemName: "", checkDescription: "" }])}
+                                                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                                                size="sm"
+                                                            >
+                                                                <Plus className="w-4 h-4 mr-2" /> Add Another Row
+                                                            </Button>
+                                                            <div className="space-x-2">
+                                                                <Button variant="ghost" onClick={() => {
+                                                                    setIsAdding(false);
+                                                                    setNewCheckItems([{ itemName: "", checkDescription: "" }]);
+                                                                }} className="text-gray-500 hover:text-gray-700">Cancel</Button>
+                                                                <Button onClick={handleCreateCheckItem} className="bg-blue-600 hover:bg-blue-700 text-white">Save All Items</Button>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            </>
                                         )}
                                         {checkItems.length === 0 && !isAdding ? (
                                             <TableRow>
@@ -472,7 +564,78 @@ export default function MasterData() {
                             </div>
                         </Card>
                     </TabsContent>
-                </Tabs>
-            </div>
+
+                {/* STAGES TAB */}
+                <TabsContent value="stages" className="mt-6 focus-visible:outline-none">
+                    <Card className="bg-white rounded-xl shadow-sm border p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-lg font-medium text-gray-900">Stages (Day Types)</h3>
+                                <p className="text-sm text-gray-500">Manage inspection stages or day types</p>
+                            </div>
+                            {!isAdding && (
+                                <Button onClick={() => setIsAdding(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                    <Plus className="w-4 h-4" /> Add Stage
+                                </Button>
+                            )}
+                        </div>
+                        <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                                <TableHeader className="bg-gray-50/50">
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className="font-semibold text-gray-900">Stage Name (ID)</TableHead>
+                                        <TableHead className="font-semibold text-gray-900">Display Label</TableHead>
+                                        <TableHead className="text-right font-semibold text-gray-900">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {isAdding && (
+                                        <TableRow className="bg-blue-50/30">
+                                            <TableCell>
+                                                <Input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="e.g. DAY_16" className="bg-white border-gray-200 text-gray-900" autoFocus />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input value={newItemLabel} onChange={(e) => setNewItemLabel(e.target.value)} placeholder="e.g. Tanggal 16" className="bg-white border-gray-200 text-gray-900" />
+                                            </TableCell>
+                                            <TableCell className="text-right space-x-2">
+                                                <Button variant="ghost" size="icon" onClick={handleCreateStage} className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Check className="w-4 h-4" /></Button>
+                                                <Button variant="ghost" size="icon" onClick={() => setIsAdding(false)} className="h-8 w-8 text-red-500 hover:bg-red-50"><X className="w-4 h-4" /></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                    {stages.map((stg) => (
+                                        <TableRow key={stg.id} className="hover:bg-gray-50 transition-colors">
+                                            <TableCell className="text-gray-900 font-medium py-3">
+                                                {editingId === stg.id ? (
+                                                    <Input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="bg-white border-gray-200 text-gray-900" autoFocus />
+                                                ) : stg.name}
+                                            </TableCell>
+                                            <TableCell className="text-gray-900 font-medium py-3">
+                                                {editingId === stg.id ? (
+                                                    <Input value={editingLabel} onChange={(e) => setEditingLabel(e.target.value)} className="bg-white border-gray-200 text-gray-900" />
+                                                ) : stg.label}
+                                            </TableCell>
+                                            <TableCell className="text-right space-x-1 py-3">
+                                                {editingId === stg.id ? (
+                                                    <>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleUpdateStage(stg.id)} className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Check className="w-4 h-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => setEditingId(null)} className="h-8 w-8 text-red-500 hover:bg-red-50"><X className="w-4 h-4" /></Button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Button variant="ghost" size="icon" onClick={() => { setEditingId(stg.id); setEditingName(stg.name); setEditingLabel(stg.label); }} className="h-8 w-8 p-0 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"><Edit2 className="w-4 h-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteStage(stg.id)} className="h-8 w-8 p-0 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></Button>
+                                                    </>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+        </div>
         );
 }

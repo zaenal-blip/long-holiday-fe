@@ -93,6 +93,9 @@ const Welcome = () => {
     }, []);
 
     const handleMenuClick = (path: string) => {
+        if (selectedDept) {
+            localStorage.setItem("lastDept", selectedDept);
+        }
         setSelectedDept(null);
         navigate(`${path}?dept=${selectedDept}`);
     };
