@@ -787,20 +787,28 @@ export default function Input5M() {
                                         <React.Fragment key={idx}>
                                             <TableRow className={`h-14 transition-colors ${row.judgment === 'NG' ? 'bg-destructive/[0.03] border-b-0' : 'border-border/50 hover:bg-muted/5'}`}>
                                                 <TableCell className="w-12 text-center font-medium text-muted-foreground">{row.no}</TableCell>
-                                                <TableCell className="w-48 font-medium text-foreground whitespace-normal break-words leading-relaxed">
-                                                    <div className="flex items-start gap-2 group/item">
+                                                <TableCell 
+                                                    className="w-48 font-medium text-foreground whitespace-normal break-words leading-relaxed cursor-pointer hover:text-primary transition-colors group/item"
+                                                    onClick={() => handleEditClick(row)}
+                                                >
+                                                    <div className="flex items-start gap-2">
                                                         <span>{row.item}</span>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             className="w-6 h-6 shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity"
-                                                            onClick={() => handleEditClick(row)}
+                                                            onClick={(e) => { e.stopPropagation(); handleEditClick(row); }}
                                                         >
                                                             <Pencil className="w-3 h-3 text-muted-foreground hover:text-primary" />
                                                         </Button>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="w-80 text-sm text-muted-foreground whitespace-normal break-words leading-relaxed">{row.checkDescription}</TableCell>
+                                                <TableCell 
+                                                    className="w-80 text-sm text-muted-foreground whitespace-normal break-words leading-relaxed cursor-pointer hover:bg-muted/10 transition-colors"
+                                                    onClick={() => handleEditClick(row)}
+                                                >
+                                                    {row.checkDescription}
+                                                </TableCell>
                                                 {selectedCategory?.name === "Man" && (
                                                     <TableCell className="w-24 text-center">
                                                         <Input
